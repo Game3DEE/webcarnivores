@@ -1,5 +1,5 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
-
+/* eslint-disable */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     define(['kaitai-struct/KaitaiStream'], factory);
