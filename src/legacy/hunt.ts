@@ -16,7 +16,7 @@ import {
     UnsignedByteType
 } from 'three';
 
-import MAP from '../kaitai/carnivores1_map';
+import MAP from '../kaitai/carnivores_map';
 import RSC from '../kaitai/carnivores1_rsc';
 
 const areaPath = 'HUNTDAT/AREAS';
