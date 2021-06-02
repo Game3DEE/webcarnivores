@@ -21,9 +21,9 @@ function dumpFlagImage(pngName, mapDim, getPixValue) {
         for (let x = 0; x < mapDim; x++) {
             const i = y * mapDim + x;
             const pix = getPixValue(i,x,y);
-            png.data[i*4+0] = pix;
-            png.data[i*4+1] = pix;
-            png.data[i*4+2] = pix;
+            png.data[i*4+0] = Array.isArray(pix) ? pix[0] : pix;
+            png.data[i*4+1] = Array.isArray(pix) ? pix[1] : pix;
+            png.data[i*4+2] = Array.isArray(pix) ? pix[2] : pix;
             png.data[i*4+3] = 0xff;
         }
     }
