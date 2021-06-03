@@ -10,9 +10,10 @@ const baseName = path.basename(mapFname, '.MAP');
 
 const map = new MAP(new KaitaiStream(fs.readFileSync(mapFname)));
 
-function dumpFlagImage(pngName, mapDim, getPixValue) {
+// colorType is 0 for grayscale (default), 2 for rgb, no alpha, 6 for rgb, with alpha
+function dumpFlagImage(pngName, mapDim, getPixValue, colorType = 0) {
     const png = new PNG({
-        colorType: 0,
+        colorType,
         width: mapDim,
         height: mapDim,
     });
