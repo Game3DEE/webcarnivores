@@ -102,7 +102,7 @@ function setupTerrainUV(geometry: BufferGeometry, atlasTexture: Texture, map: an
             // Get the texture number
             const tidx = map.textureMap1[map.mapSize * y + x];
             // get the rotation of the texture
-            const rot = map.fMap[map.mapSize * y + x] & 3;
+            const rot = map.flagsMap[map.mapSize * y + x] & 3;
             // calculate position of texture from atlas in UV coords
             const ty = Math.floor(tidx / textureDim) * uvStep;
             const tx = Math.floor(tidx % textureDim) * uvStep;
@@ -223,7 +223,7 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
     const matrix = new Matrix4();
     for (let y = 0; y < mapSize; y++) {
         for (let x = 0; x < mapSize; x++) {
-            const obj = map.oMap[y * mapSize + x];
+            const obj = map.objectMap[y * mapSize + x];
             if (obj < 254) {
                 matrix.makeTranslation(
                     (x - halfMapSize) * mapScale,
