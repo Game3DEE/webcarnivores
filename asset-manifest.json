@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/webcarnivores/static/css/main.66fe7318.chunk.css",
-    "main.js": "/webcarnivores/static/js/main.64667638.chunk.js",
-    "main.js.map": "/webcarnivores/static/js/main.64667638.chunk.js.map",
+    "main.js": "/webcarnivores/static/js/main.d8cff7a4.chunk.js",
+    "main.js.map": "/webcarnivores/static/js/main.d8cff7a4.chunk.js.map",
     "runtime-main.js": "/webcarnivores/static/js/runtime-main.3d213890.js",
     "runtime-main.js.map": "/webcarnivores/static/js/runtime-main.3d213890.js.map",
-    "static/js/2.837af570.chunk.js": "/webcarnivores/static/js/2.837af570.chunk.js",
-    "static/js/2.837af570.chunk.js.map": "/webcarnivores/static/js/2.837af570.chunk.js.map",
+    "static/js/2.769a2199.chunk.js": "/webcarnivores/static/js/2.769a2199.chunk.js",
+    "static/js/2.769a2199.chunk.js.map": "/webcarnivores/static/js/2.769a2199.chunk.js.map",
     "static/js/3.bed07e3d.chunk.js": "/webcarnivores/static/js/3.bed07e3d.chunk.js",
     "static/js/3.bed07e3d.chunk.js.map": "/webcarnivores/static/js/3.bed07e3d.chunk.js.map",
     "index.html": "/webcarnivores/index.html",
     "static/css/main.66fe7318.chunk.css.map": "/webcarnivores/static/css/main.66fe7318.chunk.css.map",
-    "static/js/2.837af570.chunk.js.LICENSE.txt": "/webcarnivores/static/js/2.837af570.chunk.js.LICENSE.txt"
+    "static/js/2.769a2199.chunk.js.LICENSE.txt": "/webcarnivores/static/js/2.769a2199.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.3d213890.js",
-    "static/js/2.837af570.chunk.js",
+    "static/js/2.769a2199.chunk.js",
     "static/css/main.66fe7318.chunk.css",
-    "static/js/main.64667638.chunk.js"
+    "static/js/main.d8cff7a4.chunk.js"
   ]
 }
