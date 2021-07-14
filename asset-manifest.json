@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/webcarnivores/static/css/main.66fe7318.chunk.css",
-    "main.js": "/webcarnivores/static/js/main.d8cff7a4.chunk.js",
-    "main.js.map": "/webcarnivores/static/js/main.d8cff7a4.chunk.js.map",
+    "main.js": "/webcarnivores/static/js/main.fcfa689b.chunk.js",
+    "main.js.map": "/webcarnivores/static/js/main.fcfa689b.chunk.js.map",
     "runtime-main.js": "/webcarnivores/static/js/runtime-main.3d213890.js",
     "runtime-main.js.map": "/webcarnivores/static/js/runtime-main.3d213890.js.map",
     "static/js/2.769a2199.chunk.js": "/webcarnivores/static/js/2.769a2199.chunk.js",
@@ -17,6 +17,6 @@
     "static/js/runtime-main.3d213890.js",
     "static/js/2.769a2199.chunk.js",
     "static/css/main.66fe7318.chunk.css",
-    "static/js/main.d8cff7a4.chunk.js"
+    "static/js/main.fcfa689b.chunk.js"
   ]
 }
