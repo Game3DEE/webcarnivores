@@ -1,11 +1,12 @@
 import React from 'react'
 
-import { Stats, OrbitControls } from '@react-three/drei'
+import { Stats, OrbitControls, PointerLockControls } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 
 import { loadArea } from '../legacy/hunt'
 
 import './Home.css'
+import Player from '../Player'
 
 interface Props {
     setLoading: (isLoading: boolean) => void;
@@ -13,6 +14,10 @@ interface Props {
 
 function Terrain({ setLoading }: Props) {
     const { scene } = useThree();
+
+    function getHeightAt(x: number, z: number): number {
+        return 1500;
+    }
 
     console.log('Terrain')
     React.useEffect(() => {
@@ -25,7 +30,7 @@ function Terrain({ setLoading }: Props) {
             setLoading(false);
         })
     }, [setLoading, scene])
-    return null;
+    return <></> //<Player getHeightAt={getHeightAt} />;
 }
 
 export default function Home() {
@@ -61,9 +66,7 @@ export default function Home() {
                     args={[0x666666]}
                 />
 
-                <OrbitControls
-                    maxPolarAngle={0.4*Math.PI}
-                />
+                <OrbitControls />
 
                 <Terrain setLoading={setLoading} />
             </Canvas>

@@ -2,22 +2,27 @@ import KaitaiStream from 'kaitai-struct/KaitaiStream';
 import {
     BufferGeometry,
     DataTexture,
+    DataTexture2DArray,
     Float32BufferAttribute,
     Group,
     InstancedMesh,
     Matrix4,
     Mesh,
     MeshLambertMaterial,
+    MeshBasicMaterial,
     PlaneBufferGeometry,
+    RepeatWrapping,
     RGBAFormat,
     RGBFormat,
     SphereBufferGeometry,
-    Texture,
-    UnsignedByteType
+    UnsignedByteType,
+    RGBAIntegerFormat,
+    UnsignedShort565Type,
+    UnsignedShort5551Type,
 } from 'three';
 
-import MAP from '../kaitai/carnivores_map';
-import RSC from '../kaitai/carnivores1_rsc';
+import MAP from '../kaitai/Map';
+import RSC from '../kaitai/Rsc';
 
 const areaPath = 'HUNTDAT/AREAS';
 
@@ -36,123 +41,43 @@ function createMapGeometry(map: any) {
     geo.rotateX(-Math.PI / 2);
 
     // Set heights based on heightfield
+    let scale = mapHScale;
+    if (map.version == 2) scale *= 2;
     for (let i = 0; i < map.mapSize * map.mapSize; i++) {
-        geo.attributes.position.setY(i, map.heightMap[i] * mapHScale);
+        geo.attributes.position.setY(i, map.heightMap[i] * scale);
     }
 
     // Compute normals for lighting
     geo.computeVertexNormals();
 
-    // Return a non-indexed version of the geometry, since we're going to need
-    // to generate the UVs for the texture atlas mapping
-    return geo.toNonIndexed();
+    return geo;
 }
 
-// Create a texture atlas for all terrain textures
-// this makes it possible to simply use UV assignments per "square"
-// in the terrain to render the correct textures
-// (and since it is all in one texture it helps prevent re-binding of textures)
-function createTextureAtlas(rsc: any) {
-    // Calculate W/H of atlas (we make a square texture atlas)
-    const textureDim = Math.ceil(Math.sqrt(rsc.textureCount));
-    const textureStride = textureDim * terrainTexSize * 3; // bytes used per single pixel row
+function createTextureArray(rsc: any) {
+    // create data array
+    const data = new Uint16Array(rsc.textureCount * terrainTexSize * terrainTexSize);
 
-    // Allocate storage for texture atlas
-    const data = new Uint8Array(textureDim * textureStride * terrainTexSize)
-
-    // Now go over all textures...
+    // copy texture data
+    let offset = 0;
     for (let i = 0; i < rsc.textureCount; i++) {
-        // Determine where in the atlas grid this texture should go
-        let top = Math.floor(i / textureDim)
-        let left = Math.floor(i % textureDim)
-        // ... and the actual byte offset in our data
-        let offset = (top * textureStride * terrainTexSize) + (left * terrainTexSize * 3);
-        // Now go over the texture and decode the 16 bit texture into our 24 bit one
-        for (let y = 0; y < terrainTexSize; y++) {
-            for (let x = 0; x < terrainTexSize; x++) {
-                let pixel = rsc.textures[i].data[y * terrainTexSize + x]
-                data[offset++] = ((pixel >> 10) & 0x1f) << 3;
-                data[offset++] = ((pixel >> 5) & 0x1f) << 3;
-                data[offset++] = ((pixel >> 0) & 0x1f) << 3;
-            }
-            offset -= terrainTexSize * 3;
-            offset += textureStride;
+        for (let j = 0; j < terrainTexSize * terrainTexSize; j++) {
+            // read RGBA5551...
+            let pixel = rsc.textures[i].data[j];
+            let r = (pixel >> 10) & 0x1f;
+            let g = ((pixel >>  5) & 0x1f) << 1;
+            let b = (pixel >>  0) & 0x1f;
+            // write RGB565 (since we do not need transparency here)
+            data[offset++] = (r << 11) + (g << 5) + b;
         }
     }
-    // Done! Now simply create a ThreeJS texture from the data
-    const texSize = textureDim * terrainTexSize;
-    console.log(rsc, texSize, textureDim, data.byteLength)
-    const tex = new DataTexture(data, texSize, texSize, RGBFormat, UnsignedByteType);
-    tex.needsUpdate = true;
 
+    let tex = new DataTexture2DArray(data, terrainTexSize, terrainTexSize, rsc.textureCount);
+    tex.type = UnsignedShort565Type;
+    tex.format = RGBFormat;
+    tex.wrapT = tex.wrapS = RepeatWrapping;
     return tex;
 }
 
-// Set up the UVs for our texture atlas based on the texture map
-function setupTerrainUV(geometry: BufferGeometry, atlasTexture: Texture, map: any) {
-    // Get number of textures per row in our atlas
-    const textureDim = atlasTexture.image.width / terrainTexSize;
-    // size of one texture in our map in UV coordinates (they are 0...1)
-    const uvStep = 1 / textureDim;
-    const uv = geometry.attributes.uv;
-    let uvidx = 0;
-    // Loop through the entire map
-    for (let y = 0; y < map.mapSize - 1; y++) {
-        for (let x = 0; x < map.mapSize - 1; x++) {
-            // Get the texture number
-            const tidx = map.textureMap1[map.mapSize * y + x];
-            // get the rotation of the texture
-            const rot = map.flagsMap[map.mapSize * y + x] & 3;
-            // calculate position of texture from atlas in UV coords
-            const ty = Math.floor(tidx / textureDim) * uvStep;
-            const tx = Math.floor(tidx % textureDim) * uvStep;
-            // Okay, the code here gets a little messy, and could be optimised,
-            // but at least it reads nicer then the Carnivores code itself :P
-
-            // Four positions in uvmap to use
-            const coords = [
-                [tx, ty],
-                [tx, ty + uvStep],
-                [tx + uvStep, ty], // first triangle UV
-                [tx + uvStep, ty + uvStep],
-            ];
-            // map coordinates to all 6 vertices used for this grid square
-            let a = 0, b = 1, c = 2, d = 1, e = 3, f = 2;
-            // ... and take rotation into account
-            switch (rot) {
-                case 0: break; // default no rotation
-                case 1: // 90deg
-                    a = 1; b = d = 3; c = f = 0; e = 2;
-                    break;
-                case 2: // 180deg
-                    a = 3; b = d = 2; c = f = 1; e = 0;
-                    break;
-                case 3: // 270deg
-                    a = 2; b = d = 0; c = f = 3; e = 1;
-                    break;
-            }
-            // Okay, now simply set the UV for those 6 vertices
-            uv.setX(uvidx + 0, coords[a][0]);
-            uv.setY(uvidx + 0, coords[a][1]);
-            uv.setX(uvidx + 1, coords[b][0]);
-            uv.setY(uvidx + 1, coords[b][1]);
-            uv.setX(uvidx + 2, coords[c][0]);
-            uv.setY(uvidx + 2, coords[c][1]);
-
-            uv.setX(uvidx + 3, coords[d][0]);
-            uv.setY(uvidx + 3, coords[d][1]);
-            uv.setX(uvidx + 4, coords[e][0]);
-            uv.setY(uvidx + 4, coords[e][1]);
-            uv.setX(uvidx + 5, coords[f][0]);
-            uv.setY(uvidx + 5, coords[f][1]);
-
-            // .. and move on
-            uvidx += 6;
-        }
-    }
-    // Tell ThreeJS we modified the UVs...
-    uv.needsUpdate = true;
-}
 
 function createGeometry(vertices: any[], faces: any[]) {
     let geo = new BufferGeometry();
@@ -192,19 +117,23 @@ function createTexture(texData: Uint16Array, texSize: number) {
     let width = 256;
     let height = texSize / (width * 2);
   
-    let data = new Uint8Array(width * height * 4);
+    let data = new Uint16Array(width * height);
+    let offset = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         let pixel = texData[y * width + x];
-        let offset = (y * width + x) * 4;
-        data[offset++] = ((pixel >> 10) & 0x1f) << 3;
-        data[offset++] = ((pixel >>  5) & 0x1f) << 3;
-        data[offset++] = ((pixel >>  0) & 0x1f) << 3;
-        data[offset++] = pixel ? 0xff : 0;
+        let r = ((pixel >> 10) & 0x1f);
+        let g = ((pixel >>  5) & 0x1f);
+        let b = ((pixel >>  0) & 0x1f);
+        let a = (pixel & 0x80) ? 1 : 0; // ????
+        data[offset++] = (r << 11) + (g << 6) + (b << 1) | a;
       }
     }
   
-    const tex = new DataTexture(data, width, height, RGBAFormat, UnsignedByteType);
+    const tex = new DataTexture(
+        data, width, height,
+        RGBAFormat, UnsignedShort5551Type,
+    );
     tex.needsUpdate = true;
     return tex;
   }
@@ -238,7 +167,7 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
                 // Landing list
                 const indicator = new Mesh(
                     new SphereBufferGeometry(128),
-                    new MeshLambertMaterial({ color: 0xff0000 }),
+                    new MeshBasicMaterial({ color: 0xff0000 }),
                 )
                 indicator.position.set(
                     (x - halfMapSize) * mapScale,
@@ -255,8 +184,8 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
     rsc.models.forEach((mdl: any, obj: number) => {
         if (matrices[obj]) {
             const count = matrices[obj].length / 16;
-            const geo = createGeometry(mdl.vertices, mdl.faces);
-            const tex = createTexture(mdl.textureData, mdl.textureSize);
+            const geo = createGeometry(mdl.model.vertices, mdl.model.faces);
+            const tex = createTexture(mdl.model.textureData, mdl.model.textureSize);
             const mesh = new InstancedMesh(
                 geo, new MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5 }),
                 count,
@@ -270,6 +199,22 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
     })
 }
 
+function buildDataMap(map: any) {
+    const data = new Uint8Array(map.mapSize * map.mapSize * 4);
+    for (let i = 0; i < map.mapSize * map.mapSize; i++) {
+        const flags = map.flagsMap[i];
+        data[i*4+0] = map.textureMap1[i];
+        data[i*4+1] = flags.fTexRotation | (flags.fReverse << 6); //flags.val;
+        data[i*4+2] = map.dayLightMap[i];
+        data[i*4+3] = map.textureMap2[i];
+    }
+    let tex = new DataTexture(data, 512, 512, RGBAIntegerFormat, UnsignedByteType);
+    tex.internalFormat = 'RGBA8UI';
+    tex.flipY = true;
+
+    return tex;
+}
+
 export async function loadArea(area: string) {
     let scene = new Group();
 
@@ -278,19 +223,99 @@ export async function loadArea(area: string) {
         const rscBuffer = await fetch(`${areaPath}/${area}.RSC`).then(body => body.arrayBuffer());
 
         const map = new MAP(new KaitaiStream(mapBuffer));
-        const rsc = new RSC(new KaitaiStream(rscBuffer));
+        console.log(`MAPv${map.version}`)
+        const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
+        console.log(rsc, map)
 
         const geo = createMapGeometry(map)
-        const atlasTexture = createTextureAtlas(rsc);
-        setupTerrainUV(geo, atlasTexture, map);
 
         createInstancedModels(rsc, map, scene);
 
+        let mat = new MeshBasicMaterial({ map: createTextureArray(rsc) });
+        mat.defines = {
+            'MAP_SIZE': `${map.mapSize}.0`,
+            'CARNIVORES': map.version,
+        };
+        mat.onBeforeCompile = s => {
+            console.log(s, map, rsc)
+            let textureMap = buildDataMap(map);
+            s.uniforms['textureMap'] = {
+                value: textureMap,
+            };
+            // Adjust vertex shader
+            let vs = s.vertexShader;
+            vs = vs.replace('#include <common>', `
+                precision highp usampler2D;
+                uniform usampler2D textureMap;
+                varying vec4 vLighting;
+            `)
+            vs = vs.replace('#include <color_vertex>', `
+                uvec4 tex = texture(textureMap, vUv);
+                #if CARNIVORES == 1
+                float light = 1.0 - (float(tex.b) / 64.0);
+                #else
+                float light = 1.0;// - (float(tex.b) / 255.0);
+                #endif
+                vLighting = vec4(light, light, light, 1.0);
+                #include <color_vertex>
+            `)
+            s.vertexShader = vs;
+            // Adjust the fragment shader
+            let fs = s.fragmentShader;
+            fs = fs.replace('#include <map_pars_fragment>', `
+            precision highp sampler2DArray;
+            precision highp usampler2D;
+            uniform sampler2DArray map;
+            uniform usampler2D textureMap;
+            varying vec4 vLighting;
+            `);
+            fs = fs.replace('#include <map_fragment>', `
+            const float tileUvStep = 1.0 / MAP_SIZE;
+            vec2 localTileUv = mod(vUv, tileUvStep) * MAP_SIZE;
+            uvec4 tex = texture(textureMap, vUv);
+            localTileUv.y = 1.0 - localTileUv.y; // XX remove and fix switch
+            float triside = ((1.0-localTileUv.x) - localTileUv.y);
+            diffuseColor = vLighting;
+            switch(tex.g & 3u) {
+                case 0u:
+                    //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
+                    break;
+                case 1u:
+                    float t = localTileUv.x;
+                    localTileUv.x = localTileUv.y;
+                    localTileUv.y = 1.0 - t;
+                    //diffuseColor = vec4(0.5, 0.0, 0.0, 1.0);
+                    break;
+                case 2u:
+                    localTileUv.x = 1.0 - localTileUv.x;
+                    localTileUv.y = 1.0 - localTileUv.y;
+                    //diffuseColor = vec4(0.5, 0.5, 0.0, 1.0);
+                    break;
+                case 3u:
+                    float x = localTileUv.x;
+                    localTileUv.x = 1.0 - localTileUv.y;
+                    localTileUv.y = x;
+                    //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
+                    break;
+            }
+            uint depth = 0u;
+            #if CARNIVORES == 2
+            triside = 0.0;
+            #endif
+            if (triside > 0.0) {
+                depth = (tex.g & 64u) != 0u ? tex.r : tex.a;
+            } else {
+                depth = (tex.g & 64u) != 0u ? tex.a : tex.r;
+            }
+            vec4 texelColor = texture( map, vec3(localTileUv, depth) );
+            texelColor = mapTexelToLinear( texelColor );
+            diffuseColor *= texelColor;
+            `)
+            s.fragmentShader = fs;
+        }
+
         // Okay, terrain done!
-        scene.add(new Mesh(
-            geo,
-            new MeshLambertMaterial({ map: atlasTexture }),
-        ));
+        scene.add(new Mesh(geo, mat));
     } catch (e) {
         console.error(e)
         return undefined;

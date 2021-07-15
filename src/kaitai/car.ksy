@@ -1,13 +1,27 @@
 meta:
-  id: carnivores_car
+  id: car
+  title: Animated model format for Carnivores
+  application: Carnivores 1, 2 and Ice Age
+  license: CC0-1.0
   file-extension: car
   endian: le
   encoding: utf8
+  imports:
+    - vertex
+    - face
+    - ivector
+
+doc-ref: https://carnivores.fandom.com/wiki/CAR
 
 seq:
   - id: name
     type: strz
-    size: 32
+    size: 24
+    doc: Name of model
+  - id: msc
+    type: strz
+    size: 8
+    doc: some revision string? always msc: <number>
   - id: animation_count
     type: u4
   - id: sound_effect_count
@@ -30,6 +44,7 @@ seq:
     type: u2
     repeat: expr
     repeat-expr: texture_size / 2
+    doc: Texture data in RGBA5551 format
   - id: animations
     type: animation
     repeat: expr
@@ -38,6 +53,18 @@ seq:
     type: sound_effect
     repeat: expr
     repeat-expr: sound_effect_count
+  - id: anim_sound_map
+    type: s4
+    repeat: expr
+    repeat-expr: 64
+    doc: mapping of animation (index) to sound (value)
+instances:
+  texture_width:
+    value: 256
+    doc: width of texture in pixels
+  texture_height:
+    value: (texture_size / 2) / texture_width
+    doc: height of texture in pixels
 
 types:
   sound_effect:
@@ -55,57 +82,18 @@ types:
       - id: name
         type: strz
         size: 32
-      - id: kps
+      - id: frames_per_second
         type: u4
       - id: frame_count
         type: u4
-      - id: data
-        type: s2
+      - id: frames
+        type: frame
         repeat: expr
-        repeat-expr: _root.vert_count * frame_count * 3
-
-  vertex:
+        repeat-expr: frame_count
+        
+  frame:
     seq:
-      - id: x
-        type: f4
-      - id: y
-        type: f4
-      - id: z
-        type: f4
-      - id: owner
-        type: s2
-      - id: hide
-        type: u2
-
-  face:
-    seq:
-      - id: v1
-        type: u4
-      - id: v2
-        type: u4
-      - id: v3
-        type: u4
-      - id: tax
-        type: s4
-      - id: tbx
-        type: s4
-      - id: tcx
-        type: s4
-      - id: tay
-        type: s4
-      - id: tby
-        type: s4
-      - id: tcy
-        type: s4
-      - id: flags
-        type: u2
-      - id: d_mask
-        type: u2
-      - id: distant
-        type: s4
-      - id: next
-        type: u4
-      - id: group
-        type: u4
-      - id: reserved
-        size: 12
+      - id: vertices
+        type: ivector
+        repeat: expr
+        repeat-expr: _root.vert_count

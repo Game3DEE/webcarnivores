@@ -1,18 +1,41 @@
+# TODO:
+#   - explain {dawn/day/night} rgb colors
 meta:
-  id: carnivores_rsc
+  id: rsc
+  title: RSC file format for Carnivores 1, 2, and Ice Age
   file-extension: rsc
+  license: CC0-1.0
   endian: le
+  bit-endian: le
   encoding: utf8
+  imports:
+    - c3df
 
+doc-ref: https://www.tapatalk.com/groups/the_carnivores_saga/carnivores-2-and-ice-age-rsc-files-t2316.html
+params:
+  - id: version
+    type: u4
 seq:
   - id: texture_count
     type: u4
   - id: model_count
     type: u4
-  - id: sky_rgb
+  - id: dawn_sky_rgb
     type: rgb
-  - id: sky_t_rgb
+    if: version == 2
+  - id: day_sky_rgb
     type: rgb
+  - id: night_sky_rgb
+    type: rgb
+    if: version == 2
+  - id: dawn_sky_t_rgb
+    type: rgb
+    if: version == 2
+  - id: day_sky_t_rgb
+    type: rgb
+  - id: night_sky_t_rgb
+    type: rgb
+    if: version == 2
   - id: textures
     type: texture
     repeat: expr
@@ -21,11 +44,21 @@ seq:
     type: model
     repeat: expr
     repeat-expr: model_count
-  - id: sky_texture
+  - id: dawn_sky_texture
     type: u2
     repeat: expr
     repeat-expr: sky_texture_size / 2
-  - id: sky_map
+    if: version == 2
+  - id: day_sky_texture
+    type: u2
+    repeat: expr
+    repeat-expr: sky_texture_size / 2
+  - id: night_sky_texture
+    type: u2
+    repeat: expr
+    repeat-expr: sky_texture_size / 2
+    if: version == 2
+  - id: clouds_map
     size: 128 * 128
   - id: fog_count
     type: u4
@@ -45,6 +78,14 @@ seq:
     type: ambient_sound
     repeat: expr
     repeat-expr: ambient_sound_count
+  - id: water_count
+    type: u4
+    if: version == 2
+  - id: waters
+    type: water
+    repeat: expr
+    repeat-expr: water_count
+    if: version == 2
 instances:
   sky_texture_size:
     value: 256 * 256 * 2
@@ -58,49 +99,16 @@ types:
         type: u4
       - id: b
         type: u4
+
+  # a 128x128 RGB5551 bitmap
   texture:
     seq:
       - id: data
         type: u2
         repeat: expr
-        repeat-expr: size / 2
-    instances:
-      size:
-        value: 128 * 128 *2
-  
-  model:
-    seq:
-      - id: model_info
-        type: model_info
-      - id: vert_count
-        type: u4
-      - id: face_count
-        type: u4
-      - id: node_count
-        type: u4
-      - id: texture_size
-        type: u4
-      - id: faces
-        type: face
-        repeat: expr
-        repeat-expr: face_count
-      - id: vertices
-        type: vertex
-        repeat: expr
-        repeat-expr: vert_count
-      - id: nodes
-        type: node
-        repeat: expr
-        repeat-expr: node_count
-      - id: texture_data
-        type: u2
-        repeat: expr
-        repeat-expr: texture_size / 2
-      - id: animation
-        type: model_animation
-        if: model_info.is_animated
+        repeat-expr: 128 * 128
 
-  model_info:
+  model:
     seq:
       - id: radius
         type: s4
@@ -116,7 +124,34 @@ types:
         type: s4
       - id: c_intensity
         type: s4
-      - id: flags
+      # Flags (32 bit)
+      - id: f_place_water
+        type: b1
+      - id: f_place_ground
+        type: b1
+      - id: f_place_user
+        type: b1
+      - id: f_circle
+        type: b1
+      - id: f_bound
+        type: b1
+      - id: f_no_bmp
+        type: b1
+      - id: f_no_light
+        type: b1
+      - id: f_default_light
+        type: b1
+      - id: f_ground_light
+        type: b1
+      - id: f_no_soft
+        type: b1
+      - id: f_no_soft_2
+        type: b1
+      - id: f_unused
+        type: b20
+      - id: f_is_animated
+        type: b1
+
         type: u4
       - id: gr_rad
         type: s4
@@ -128,75 +163,14 @@ types:
         type: f4
       - id: reserved
         size: 16
-    instances:
-      is_animated:
-        value: (flags & 0x80000000) != 0
-      not_lighted:
-        value: (flags & 64) != 0
-      needs_bound:
-        value: (flags & 16) != 0
-
-  vertex:
-    seq:
-      - id: x
-        type: f4
-      - id: y
-        type: f4
-      - id: z
-        type: f4
-      - id: owner
-        type: s2
-      - id: hide
-        type: u2
-
-  face:
-    seq:
-      - id: v1
-        type: u4
-      - id: v2
-        type: u4
-      - id: v3
-        type: u4
-      - id: tax
-        type: s4
-      - id: tbx
-        type: s4
-      - id: tcx
-        type: s4
-      - id: tay
-        type: s4
-      - id: tby
-        type: s4
-      - id: tcy
-        type: s4
-      - id: flags
-        type: u2
-      - id: d_mask
-        type: u2
-      - id: distant
-        type: s4
-      - id: next
-        type: u4
-      - id: group
-        type: u4
-      - id: reserved
-        size: 12
-
-  node:
-    seq:
-      - id: name
-        type: strz
-        size: 32
-      - id: x
-        type: f4
-      - id: y
-        type: f4
-      - id: z
-        type: f4
-      - id: owner
-        type: s2
-      - id: hide
-        type: u2
+      - id: model
+        type: c3df
+      - id: billboard
+        type: texture
+        if: _root.version == 2
+      - id: animation
+        type: model_animation
+        if: f_is_animated
 
   model_animation:
     seq:
@@ -258,5 +232,34 @@ types:
         type: u4
       - id: r_frequency
         type: u4
+        # The below values are not set/used for C1
       - id: r_environment
+        type: u2
+        enum: audio_reverb
+      - id: rf_not_at_night
+        type: b1
+      - id: rf_unused
+        type: b15
+        doc: if set, sound does not play at night
+
+  water:
+    seq:
+      - id: texture_index
         type: u4
+      - id: level
+        type: u4
+      - id: opacity
+        type: f4
+      - id: fog_rgb
+        type: u4
+
+enums:
+  audio_reverb:
+    0: generic
+    1: plate
+    2: forest
+    3: mountain
+    4: canyon
+    5: cave # special1
+    6: special2
+    7: unused # special3
