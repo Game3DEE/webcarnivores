@@ -1,36 +1,26 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 
-import { Stats, OrbitControls, PointerLockControls } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Stats, OrbitControls, PointerLockControls, Html } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
 
 import { loadArea } from '../legacy/hunt'
 
 import './Home.css'
 import Player from '../Player'
+import wrapPromise from '../WrapPromise'
 
-interface Props {
-    setLoading: (isLoading: boolean) => void;
-}
+const resource = wrapPromise(loadArea("AREA1"));
 
-function Terrain({ setLoading }: Props) {
-    const { scene } = useThree();
+function Terrain() {
+    const group = resource.read();
 
+    /*
     function getHeightAt(x: number, z: number): number {
         return 1500;
-    }
+    //<Player getHeightAt={getHeightAt} />;
+    }*/
 
-    console.log('Terrain')
-    React.useEffect(() => {
-        console.time("loadArea");
-        loadArea("AREA1").then(world => {
-            console.timeEnd("loadArea");
-            if (world) {
-                scene.add(world)
-            }
-            setLoading(false);
-        })
-    }, [setLoading, scene])
-    return <></> //<Player getHeightAt={getHeightAt} />;
+    return <primitive object={group} />
 }
 
 export default function Home() {
@@ -38,7 +28,6 @@ export default function Home() {
 
     return (
         <>
-            {isLoading && (<div className="center"><p>Loading, please wait</p></div>)}
             <Canvas
                 shadows
                 linear
@@ -68,7 +57,9 @@ export default function Home() {
 
                 <OrbitControls />
 
-                <Terrain setLoading={setLoading} />
+                <Suspense fallback={<Html center>Loading, please wait</Html>}>
+                    <Terrain />
+                </Suspense>
             </Canvas>
         </>
     )

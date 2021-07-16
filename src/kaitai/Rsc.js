@@ -39,7 +39,6 @@ const define = undefined;
     this._parent = _parent;
     this._root = _root || this;
     this.version = version;
-    console.log('in RSC:', version)
 
     this._read();
   }
