@@ -186,7 +186,6 @@ function buildVertexMap(map: any) {
     }
     let tex = new DataTexture(data, map.mapSize, map.mapSize, RGIntegerFormat, UnsignedByteType);
     tex.internalFormat = 'RG8UI';
-    tex.flipY = true;
     return tex;
 }
 
@@ -201,7 +200,6 @@ function buildFragmentMap(map: any) {
     }
     let tex = new DataTexture(data, map.mapSize, map.mapSize, RGBIntegerFormat, UnsignedByteType);
     tex.internalFormat = 'RGB8UI';
-    tex.flipY = true;
     return tex;
 }
 
@@ -291,7 +289,6 @@ export async function loadArea(area: string) {
             vec2 tilePos = vUv * MAP_SIZE;
             vec2 localTileUv = tilePos - floor(tilePos);
             uvec4 tex = texture(fragmentMap, vUv);
-            localTileUv.y = 1.0 - localTileUv.y; // XX remove and fix switch
             float triside = ((1.0-localTileUv.x) - localTileUv.y);
             diffuseColor = vLighting;
             switch(tex.b & 3u) {
