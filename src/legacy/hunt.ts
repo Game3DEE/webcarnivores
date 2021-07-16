@@ -31,19 +31,6 @@ const mapScale = 256; // size of one map square
 let mapHScale = 32; // Y scale for heightfield (*2 for C2)
 const terrainTexSize = 128; // terrain textures are 128x128 pix
 
-function createMapGeometry(map: any) {
-    // Create a plane with divisions as base for map heightfield
-    const geo = new PlaneBufferGeometry(
-        map.mapSize * mapScale, map.mapSize * mapScale,
-        map.mapSize - 1, map.mapSize - 1
-    );
-
-    // Lay it flat
-    geo.rotateX(-Math.PI / 2);
-
-    return geo;
-}
-
 function createTextureArray(rsc: any) {
     // create data array
     const data = new Uint16Array(rsc.textureCount * terrainTexSize * terrainTexSize);
@@ -232,9 +219,24 @@ export async function loadArea(area: string) {
         }
         console.log(rsc, map)
 
-        const geo = createMapGeometry(map)
+        // Create a plane with divisions as base for map heightfield
+        const geo = new PlaneBufferGeometry(
+//            80 * mapScale, 80 * mapScale,
+//            80 - 1, 80 - 1
+            map.mapSize * mapScale, map.mapSize * mapScale,
+            map.mapSize - 1, map.mapSize - 1
+        );
+
+        // Lay it flat
+        geo.rotateX(-Math.PI / 2);
 
         createInstancedModels(rsc, map, scene);
+
+        // World coordinates to uv transform (TODO investigate uvScaleMap/uvTransform?)
+        const heightmapMatrix = new Matrix4().multiplyMatrices(
+            new Matrix4().makeTranslation(0.5, 0, 0.5),
+            new Matrix4().makeScale(1 / (map.mapSize * mapScale), 1, 1 / (map.mapSize * mapScale)),
+        );
 
         let mat = new MeshBasicMaterial({ map: createTextureArray(rsc) });
         mat.defines = {
@@ -250,23 +252,26 @@ export async function loadArea(area: string) {
             let fragmentMap = buildFragmentMap(map);
             s.uniforms['vertexMap'] = { value: vertexMap, };
             s.uniforms['fragmentMap'] = { value: fragmentMap, };
+            s.uniforms['heightmapMatrix'] = { value: heightmapMatrix, };
 
             // Adjust vertex shader
             let vs = s.vertexShader;
             vs = vs.replace('#include <common>', `
                 precision highp usampler2D;
                 uniform usampler2D vertexMap;
+                uniform mat4 heightmapMatrix;
                 varying vec4 vLighting;
             `)
             vs = vs.replace('#include <color_vertex>', `
-                uvec4 tex = texture(vertexMap, vUv);
-                #if CARNIVORES == 1
-                float light = 1.0 - (float(tex.g) / 64.0);
-                #else
-                float light = float(tex.g) / 255.0;
-                #endif
-                vLighting = vec4(light, light, light, 1.0);
-                #include <color_vertex>
+            vUv = (heightmapMatrix * modelMatrix * vec4(position, 1.0)).xz;
+            uvec4 tex = texture(vertexMap, vUv);
+            #if CARNIVORES == 1
+            float light = 1.0 - (float(tex.g) / 64.0);
+            #else
+            float light = float(tex.g) / 255.0;
+            #endif
+            vLighting = vec4(light, light, light, 1.0);
+            #include <color_vertex>
             `)
             vs = vs.replace('#include <begin_vertex>', `
             #include <begin_vertex>
