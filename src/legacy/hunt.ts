@@ -16,9 +16,10 @@ import {
     RGBFormat,
     SphereBufferGeometry,
     UnsignedByteType,
-    RGBAIntegerFormat,
     UnsignedShort565Type,
     UnsignedShort5551Type,
+    RGBIntegerFormat,
+    RGIntegerFormat,
 } from 'three';
 
 import MAP from '../kaitai/Map';
@@ -39,14 +40,6 @@ function createMapGeometry(map: any) {
 
     // Lay it flat
     geo.rotateX(-Math.PI / 2);
-
-    // Set heights based on heightfield
-    for (let i = 0; i < map.mapSize * map.mapSize; i++) {
-        geo.attributes.position.setY(i, map.heightMap[i] * mapHScale);
-    }
-
-    // Compute normals for lighting
-    geo.computeVertexNormals();
 
     return geo;
 }
@@ -197,19 +190,31 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
     })
 }
 
-function buildDataMap(map: any) {
-    const data = new Uint8Array(map.mapSize * map.mapSize * 4);
+function buildVertexMap(map: any) {
+    const numChannels = 2;
+    const data = new Uint8Array(map.mapSize * map.mapSize * numChannels);
+    for (let i = 0; i < map.mapSize * map.mapSize; i++) {
+        data[i*numChannels+0] = map.heightMap[i]; // R
+        data[i*numChannels+1] = map.dayLightMap[i]; // G
+    }
+    let tex = new DataTexture(data, map.mapSize, map.mapSize, RGIntegerFormat, UnsignedByteType);
+    tex.internalFormat = 'RG8UI';
+    tex.flipY = true;
+    return tex;
+}
+
+function buildFragmentMap(map: any) {
+    const numChannels = 3;
+    const data = new Uint8Array(map.mapSize * map.mapSize * numChannels);
     for (let i = 0; i < map.mapSize * map.mapSize; i++) {
         const flags = map.flagsMap[i];
-        data[i*4+0] = map.textureMap1[i];
-        data[i*4+1] = flags.fTexDirection | (flags.fReverse << 6);
-        data[i*4+2] = map.dayLightMap[i];
-        data[i*4+3] = map.textureMap2[i];
+        data[i*numChannels+0] = map.textureMap1[i]; // R
+        data[i*numChannels+1] = map.textureMap2[i]; // G
+        data[i*numChannels+2] = flags.fTexDirection | (flags.fReverse << 6); // B
     }
-    let tex = new DataTexture(data, map.mapSize, map.mapSize, RGBAIntegerFormat, UnsignedByteType);
-    tex.internalFormat = 'RGBA8UI';
+    let tex = new DataTexture(data, map.mapSize, map.mapSize, RGBIntegerFormat, UnsignedByteType);
+    tex.internalFormat = 'RGB8UI';
     tex.flipY = true;
-
     return tex;
 }
 
@@ -235,29 +240,37 @@ export async function loadArea(area: string) {
         mat.defines = {
             'MAP_SIZE': `${map.mapSize}.0`,
             'CARNIVORES': map.version,
+            'MAP_HSCALE': `${mapHScale}.0`,
         };
         mat.onBeforeCompile = s => {
             console.log(s, map, rsc)
-            let textureMap = buildDataMap(map);
-            s.uniforms['textureMap'] = {
-                value: textureMap,
-            };
+            // Create our (integer) data textures for
+            // fragment and vertex shader
+            let vertexMap = buildVertexMap(map);
+            let fragmentMap = buildFragmentMap(map);
+            s.uniforms['vertexMap'] = { value: vertexMap, };
+            s.uniforms['fragmentMap'] = { value: fragmentMap, };
+
             // Adjust vertex shader
             let vs = s.vertexShader;
             vs = vs.replace('#include <common>', `
                 precision highp usampler2D;
-                uniform usampler2D textureMap;
+                uniform usampler2D vertexMap;
                 varying vec4 vLighting;
             `)
             vs = vs.replace('#include <color_vertex>', `
-                uvec4 tex = texture(textureMap, vUv);
+                uvec4 tex = texture(vertexMap, vUv);
                 #if CARNIVORES == 1
-                float light = 1.0 - (float(tex.b) / 64.0);
+                float light = 1.0 - (float(tex.g) / 64.0);
                 #else
-                float light = float(tex.b) / 255.0;
+                float light = float(tex.g) / 255.0;
                 #endif
                 vLighting = vec4(light, light, light, 1.0);
                 #include <color_vertex>
+            `)
+            vs = vs.replace('#include <begin_vertex>', `
+            #include <begin_vertex>
+            transformed.y += float(tex.r) * MAP_HSCALE;
             `)
             s.vertexShader = vs;
             // Adjust the fragment shader
@@ -266,17 +279,17 @@ export async function loadArea(area: string) {
             precision highp sampler2DArray;
             precision highp usampler2D;
             uniform sampler2DArray map;
-            uniform usampler2D textureMap;
+            uniform usampler2D fragmentMap;
             varying vec4 vLighting;
             `);
             fs = fs.replace('#include <map_fragment>', `
             vec2 tilePos = vUv * MAP_SIZE;
             vec2 localTileUv = tilePos - floor(tilePos);
-            uvec4 tex = texture(textureMap, vUv);
+            uvec4 tex = texture(fragmentMap, vUv);
             localTileUv.y = 1.0 - localTileUv.y; // XX remove and fix switch
             float triside = ((1.0-localTileUv.x) - localTileUv.y);
             diffuseColor = vLighting;
-            switch(tex.g & 3u) {
+            switch(tex.b & 3u) {
                 case 0u:
                     //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
                     break;
@@ -298,17 +311,16 @@ export async function loadArea(area: string) {
                     //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
                     break;
             }
-            uint depth = 0u;
+            uint depth = tex.r;
+            #if CARNIVORES == 1
             if (triside >= 0.0) {
-                depth = (tex.g & 64u) != 0u ? tex.r : tex.a;
+                depth = (tex.b & 64u) != 0u ? tex.r : tex.g;
             } else {
-                depth = (tex.g & 64u) != 0u ? tex.a : tex.r;
+                depth = (tex.b & 64u) != 0u ? tex.g : tex.r;
             }
-            #if CARNIVORES == 2
-            depth = tex.r;
             #endif
             #ifdef DEBUG_REVERSE_FLAG
-            if ((tex.g & 64u) != 0u) {
+            if ((tex.b & 64u) != 0u) {
                 diffuseColor = vec4(0.6, 0.6, 0.6, 1.0);
             } else {
                 diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
