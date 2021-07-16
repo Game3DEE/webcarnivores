@@ -1,5 +1,5 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
-const define = undefined;
+const define = undefined, self = undefined;
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     define(['kaitai-struct/KaitaiStream'], factory);
@@ -8,7 +8,7 @@ const define = undefined;
   } else {
     root.Map = factory(root.KaitaiStream);
   }
-}(this, function (KaitaiStream) {
+}(typeof self !== 'undefined' ? self : this, function (KaitaiStream) {
 /**
  * @see {@link https://carnivores.fandom.com/wiki/Carnivores_2_MAP|Source}
  */
@@ -82,8 +82,9 @@ var Map = (function() {
       this._read();
     }
     FlagsV1.prototype._read = function() {
-      this.fTexRotation = this._io.readBitsIntLe(2);
-      this.unknown = this._io.readBitsIntLe(4);
+      this.fTexDirection = this._io.readBitsIntLe(2);
+      this.fModelDirection = this._io.readBitsIntLe(3);
+      this.fNoWay = this._io.readBitsIntLe(1) != 0;
       this.fReverse = this._io.readBitsIntLe(1) != 0;
       this.fWater = this._io.readBitsIntLe(1) != 0;
     }
@@ -93,6 +94,11 @@ var Map = (function() {
      * 1: rotated 90 degrees clockwise
      * 2: rotated 180 degrees (upside-down)
      * 3: rotated 90 degrees counter-clockwise
+     */
+
+    /**
+     * Represents an angle, fully calculated as
+     * (value * 2 * PI / 8) and used when rendering models on the tile.
      */
 
     /**
@@ -118,31 +124,33 @@ var Map = (function() {
       this._read();
     }
     FlagsV2.prototype._read = function() {
-      this.unknown1 = this._io.readBitsIntLe(4);
+      this.fTexDirection = this._io.readBitsIntLe(2);
+      this.fModelDirection = this._io.readBitsIntLe(2);
       this.fReverse = this._io.readBitsIntLe(1) != 0;
       this.fNoWay = this._io.readBitsIntLe(1) != 0;
-      this.unknown2 = this._io.readBitsIntLe(1) != 0;
+      this.unused1 = this._io.readBitsIntLe(1) != 0;
       this.fWater = this._io.readBitsIntLe(1) != 0;
-      this.unknown3 = this._io.readBitsIntLe(7);
+      this.fTex2Direction = this._io.readBitsIntLe(2);
+      this.unused2 = this._io.readBitsIntLe(5);
       this.fWater2 = this._io.readBitsIntLe(1) != 0;
     }
 
     /**
-     * will reverse the order of the triangles so that the center edge
-     * goes the other way
+     * 0: no rotation (right-side-up)
+     * 1: rotated 90 degrees clockwise
+     * 2: rotated 180 degrees (upside-down)
+     * 3: rotated 90 degrees counter-clockwise
      */
 
     /**
-     * Marks this cell as invalid for spawning and path finding for AI
+     * Represents an angle, fully calculated as
+     * (value * 2 * PI / 4) and used when rendering models on the tile.
      */
 
     /**
-     * Marks the cell as having water in it, must be set for the Water Index
-     * map to have any effect.
-     */
-
-    /**
-     * Marks the cell as having water in it (this flag is unused)
+     * Indicates how the cell is diagonally split among both textures
+     *   true: 2 - 1
+     *   false: 1 - 2
      */
 
     return FlagsV2;
@@ -173,6 +181,7 @@ var Map = (function() {
   });
 
   /**
+   * |flags
    * Terrain heightmap
    * 
    * The terrain geometry is a `map_size`x`map_size` grid of 256x256

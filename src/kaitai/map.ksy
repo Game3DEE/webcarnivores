@@ -15,7 +15,7 @@ seq:
     type: u1
     repeat: expr
     repeat-expr: map_size * map_size 
-    doc: |
+    doc: |flags
       Terrain heightmap
       
       The terrain geometry is a `map_size`x`map_size` grid of 256x256
@@ -115,15 +115,20 @@ instances:
 types:
   flags_v1:
     seq:
-      - id: f_tex_rotation
+      - id: f_tex_direction
         type: b2
         doc: |
           0: no rotation (right-side-up)
           1: rotated 90 degrees clockwise
           2: rotated 180 degrees (upside-down)
           3: rotated 90 degrees counter-clockwise
-      - id: unknown
-        type: b4
+      - id: f_model_direction
+        type: b3
+        doc: |
+          Represents an angle, fully calculated as
+          (value * 2 * PI / 8) and used when rendering models on the tile.
+      - id: f_no_way
+        type: b1
       - id: f_reverse
         type: b1
         doc: |
@@ -138,25 +143,35 @@ types:
 
   flags_v2:
     seq:
-      - id: unknown1
-        type: b4
-      - id: f_reverse
+      # LSB of word
+      - id: f_tex_direction
+        type: b2
         doc: |
-          will reverse the order of the triangles so that the center edge
-          goes the other way
+          0: no rotation (right-side-up)
+          1: rotated 90 degrees clockwise
+          2: rotated 180 degrees (upside-down)
+          3: rotated 90 degrees counter-clockwise
+      - id: f_model_direction
+        type: b2
+        doc: |
+          Represents an angle, fully calculated as
+          (value * 2 * PI / 4) and used when rendering models on the tile.
+      - id: f_reverse
         type: b1
+        doc: |
+          Indicates how the cell is diagonally split among both textures
+            true: 2 - 1
+            false: 1 - 2
       - id: f_no_way
         type: b1
-        doc: Marks this cell as invalid for spawning and path finding for AI
-      - id: unknown2
+      - id: unused1
         type: b1
       - id: f_water
         type: b1
-        doc: |
-          Marks the cell as having water in it, must be set for the Water Index
-          map to have any effect.
-      - id: unknown3
-        type: b7
+        # MSB of word
+      - id: f_tex2_direction
+        type: b2
+      - id: unused2
+        type: b5
       - id: f_water2
         type: b1
-        doc: Marks the cell as having water in it (this flag is unused)

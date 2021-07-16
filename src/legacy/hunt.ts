@@ -27,7 +27,7 @@ import RSC from '../kaitai/Rsc';
 const areaPath = 'HUNTDAT/AREAS';
 
 const mapScale = 256; // size of one map square
-const mapHScale = 32; // Y scale for heightfield
+let mapHScale = 32; // Y scale for heightfield (*2 for C2)
 const terrainTexSize = 128; // terrain textures are 128x128 pix
 
 function createMapGeometry(map: any) {
@@ -41,10 +41,8 @@ function createMapGeometry(map: any) {
     geo.rotateX(-Math.PI / 2);
 
     // Set heights based on heightfield
-    let scale = mapHScale;
-    if (map.version == 2) scale *= 2;
     for (let i = 0; i < map.mapSize * map.mapSize; i++) {
-        geo.attributes.position.setY(i, map.heightMap[i] * scale);
+        geo.attributes.position.setY(i, map.heightMap[i] * mapHScale);
     }
 
     // Compute normals for lighting
@@ -204,11 +202,11 @@ function buildDataMap(map: any) {
     for (let i = 0; i < map.mapSize * map.mapSize; i++) {
         const flags = map.flagsMap[i];
         data[i*4+0] = map.textureMap1[i];
-        data[i*4+1] = flags.fTexRotation | (flags.fReverse << 6); //flags.val;
+        data[i*4+1] = flags.fTexDirection | (flags.fReverse << 6);
         data[i*4+2] = map.dayLightMap[i];
         data[i*4+3] = map.textureMap2[i];
     }
-    let tex = new DataTexture(data, 512, 512, RGBAIntegerFormat, UnsignedByteType);
+    let tex = new DataTexture(data, map.mapSize, map.mapSize, RGBAIntegerFormat, UnsignedByteType);
     tex.internalFormat = 'RGBA8UI';
     tex.flipY = true;
 
@@ -223,8 +221,10 @@ export async function loadArea(area: string) {
         const rscBuffer = await fetch(`${areaPath}/${area}.RSC`).then(body => body.arrayBuffer());
 
         const map = new MAP(new KaitaiStream(mapBuffer));
-        console.log(`MAPv${map.version}`)
         const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
+        if (map.version == 2) {
+            mapHScale *= 2;
+        }
         console.log(rsc, map)
 
         const geo = createMapGeometry(map)
@@ -254,7 +254,7 @@ export async function loadArea(area: string) {
                 #if CARNIVORES == 1
                 float light = 1.0 - (float(tex.b) / 64.0);
                 #else
-                float light = 1.0;// - (float(tex.b) / 255.0);
+                float light = float(tex.b) / 255.0;
                 #endif
                 vLighting = vec4(light, light, light, 1.0);
                 #include <color_vertex>
@@ -270,8 +270,8 @@ export async function loadArea(area: string) {
             varying vec4 vLighting;
             `);
             fs = fs.replace('#include <map_fragment>', `
-            const float tileUvStep = 1.0 / MAP_SIZE;
-            vec2 localTileUv = mod(vUv, tileUvStep) * MAP_SIZE;
+            vec2 tilePos = vUv * MAP_SIZE;
+            vec2 localTileUv = tilePos - floor(tilePos);
             uvec4 tex = texture(textureMap, vUv);
             localTileUv.y = 1.0 - localTileUv.y; // XX remove and fix switch
             float triside = ((1.0-localTileUv.x) - localTileUv.y);
@@ -299,17 +299,25 @@ export async function loadArea(area: string) {
                     break;
             }
             uint depth = 0u;
-            #if CARNIVORES == 2
-            triside = 0.0;
-            #endif
-            if (triside > 0.0) {
+            if (triside >= 0.0) {
                 depth = (tex.g & 64u) != 0u ? tex.r : tex.a;
             } else {
                 depth = (tex.g & 64u) != 0u ? tex.a : tex.r;
             }
+            #if CARNIVORES == 2
+            depth = tex.r;
+            #endif
+            #ifdef DEBUG_REVERSE_FLAG
+            if ((tex.g & 64u) != 0u) {
+                diffuseColor = vec4(0.6, 0.6, 0.6, 1.0);
+            } else {
+                diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
+            #endif
             vec4 texelColor = texture( map, vec3(localTileUv, depth) );
             texelColor = mapTexelToLinear( texelColor );
             diffuseColor *= texelColor;
+            //diffuseColor = vec4(localTileUv, 0.0, 1.0);
             `)
             s.fragmentShader = fs;
         }
