@@ -25,9 +25,10 @@ function handleKeys(event: KeyboardEvent) {
 
 interface Props {
     getHeightAt: (x: number, z: number) => number;
+    landings: Vector3[];
 }
 
-export default function Player({ getHeightAt }: Props) {
+export default function Player({ getHeightAt, landings }: Props) {
     React.useEffect(() => {
         document.addEventListener('keydown', handleKeys);
         document.addEventListener('keyup', handleKeys);
@@ -42,6 +43,9 @@ export default function Player({ getHeightAt }: Props) {
     const _vector = new Vector3();
     let onGround = false;
 
+    const initPos = landings[Math.floor(landings.length * Math.random())];
+    let initial = true;
+
     const velocityDrag = 10.0;
     const mass = 100.0;
     const gravity = 9.8;
@@ -51,6 +55,11 @@ export default function Player({ getHeightAt }: Props) {
 
     useFrame(({ camera }) => {
         let delta = clock.getDelta();
+
+        if (initial) {
+            camera.position.copy(initPos);
+            initial = false;
+        }
 
         velocity.x -= velocity.x * velocityDrag * delta;
         velocity.z -= velocity.z * velocityDrag * delta;

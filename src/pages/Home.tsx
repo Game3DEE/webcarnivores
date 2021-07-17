@@ -13,14 +13,14 @@ import { Color } from 'three'
 const resource = wrapPromise(loadArea("AREA1"));
 
 function Terrain() {
-    const { group, getHeightAt } = resource.read();
+    const { group, getHeightAt, landings } = resource.read();
 
     //console.log(group, getHeightAt);
 
     return (
         <>
         <primitive object={group} />
-        <Player getHeightAt={getHeightAt} />
+        <Player landings={landings} getHeightAt={getHeightAt} />
         </>
     )
 }

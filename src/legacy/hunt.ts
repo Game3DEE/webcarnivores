@@ -19,6 +19,7 @@ import {
     UnsignedShort5551Type,
     RGBIntegerFormat,
     RGIntegerFormat,
+    Vector3,
 } from 'three';
 
 import MAP from '../kaitai/Map';
@@ -106,9 +107,8 @@ function createTexture(texData: Uint8Array, width: number, height: number) {
 function createInstancedModels(rsc: any, map: any, parent: Group) {
 
     const matrices: number[][] = [];
-
     const mapSize = map.mapSize;
-    const halfMapSize = mapSize / 2;
+    const landingList: Vector3[] = [];
 
     function getHeight(x: number, y: number) {
         return map.heightMap[y * map.mapSize + x] * map.yScale;
@@ -120,9 +120,9 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
             const obj = map.objectMap[y * mapSize + x];
             if (obj < 254) {
                 matrix.makeTranslation(
-                    (x - halfMapSize) * map.tileSize,
+                    x * map.tileSize,
                     getHeight(x, y),
-                    (y - halfMapSize) * map.tileSize)
+                    y * map.tileSize)
                 if (!matrices[obj]) {
                     matrices[obj] = matrix.toArray();
                 } else {
@@ -130,16 +130,13 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
                 }
             } else if (obj === 254) {
                 // Landing list
-                const indicator = new Mesh(
-                    new SphereBufferGeometry(128),
-                    new MeshBasicMaterial({ color: 0xff0000 }),
-                )
-                indicator.position.set(
-                    (x - halfMapSize) * map.tileSize,
-                    getHeight(x, y),
-                    (y - halfMapSize) * map.tileSize);
-
-                parent.add(indicator);
+                landingList.push(
+                    new Vector3(
+                        x * map.tileSize,
+                        getHeight(x, y),
+                        y * map.tileSize    
+                    )
+                );
             } else if (obj === 255) {
                 // empty
             }
@@ -162,6 +159,8 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
             parent.add(mesh)
         }
     })
+
+    return landingList;
 }
 
 function buildVertexMap(map: any) {
@@ -210,17 +209,20 @@ export async function loadArea(area: string) {
 
     // Lay it flat
     geo.rotateX(-Math.PI / 2);
+    // and make it start at (0,0)
+    geo.translate(
+        map.mapSize * map.tileSize / 2,
+        0,
+        map.mapSize * map.tileSize / 2
+    );
 
-    createInstancedModels(rsc, map, scene);
+    const landings = createInstancedModels(rsc, map, scene);
 
     // World coordinates to uv transform (TODO investigate uvScaleMap/uvTransform?)
-    const heightmapMatrix = new Matrix4().multiplyMatrices(
-        new Matrix4().makeTranslation(0.5, 0, 0.5),
-        new Matrix4().makeScale(
-            1 / (map.mapSize * map.tileSize),
-            1,
-            1 / (map.mapSize * map.tileSize),
-        ),
+    const heightmapMatrix = new Matrix4().makeScale(
+        1 / (map.mapSize * map.tileSize),
+        1,
+        1 / (map.mapSize * map.tileSize),
     );
 
     let mat = new MeshBasicMaterial({ map: createTextureArray(rsc), fog: true });
@@ -333,9 +335,6 @@ export async function loadArea(area: string) {
         const mapSize = map.mapSize;
         const heightMap = map.heightMap!;
 
-        x += (mapSize * tileSize) / 2;
-        z += (mapSize * tileSize) / 2;
-
         const cx = Math.floor(x / tileSize);
         const cy = Math.floor(z / tileSize);
         const dx = Math.floor(x % tileSize);
@@ -356,11 +355,11 @@ export async function loadArea(area: string) {
             (h1 * (256 - dx) + h2 * dx) * (256 - dy) +
             (h4 * (256 - dx) + h3 * dx) * dy;
      
-        const height =  h / 256 / 256 * map.yScale;
-        return height;
+        return  h / 256 / 256 * map.yScale;
     }
 
     return {
+        landings,
         getHeightAt,
         group: scene
     };
