@@ -70,8 +70,9 @@ export default function Player({ getHeightAt, landings }: Props) {
         direction.x = Number( controls.right ) - Number( controls.left );
         direction.normalize(); // this ensures consistent movements in all directions
 
-        if ( controls.forward || controls.backward ) velocity.z -= direction.z * speed * delta;
-        if ( controls.left || controls.right ) velocity.x -= direction.x * speed * delta;
+        const spd = speed * (controls.run ? 4 : 1);
+        if ( controls.forward || controls.backward ) velocity.z -= direction.z * spd * delta;
+        if ( controls.left || controls.right ) velocity.x -= direction.x * spd * delta;
 
         // move right
         _vector.setFromMatrixColumn( camera.matrix, 0 );
