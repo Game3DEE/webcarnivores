@@ -155,12 +155,36 @@ var Map = (function() {
 
     return FlagsV2;
   })();
+  Object.defineProperty(Map.prototype, 'mapSize', {
+    get: function() {
+      if (this._m_mapSize !== undefined)
+        return this._m_mapSize;
+      this._m_mapSize = (this.version * 512);
+      return this._m_mapSize;
+    }
+  });
+  Object.defineProperty(Map.prototype, 'yScale', {
+    get: function() {
+      if (this._m_yScale !== undefined)
+        return this._m_yScale;
+      this._m_yScale = (this.version * 32);
+      return this._m_yScale;
+    }
+  });
   Object.defineProperty(Map.prototype, 'version', {
     get: function() {
       if (this._m_version !== undefined)
         return this._m_version;
       this._m_version = (this._io.size == 2228224 ? 1 : (this._io.size == 14155776 ? 2 : 0));
       return this._m_version;
+    }
+  });
+  Object.defineProperty(Map.prototype, 'tileSize', {
+    get: function() {
+      if (this._m_tileSize !== undefined)
+        return this._m_tileSize;
+      this._m_tileSize = 256;
+      return this._m_tileSize;
     }
   });
   Object.defineProperty(Map.prototype, 'isValid', {
@@ -171,17 +195,8 @@ var Map = (function() {
       return this._m_isValid;
     }
   });
-  Object.defineProperty(Map.prototype, 'mapSize', {
-    get: function() {
-      if (this._m_mapSize !== undefined)
-        return this._m_mapSize;
-      this._m_mapSize = (this.version * 512);
-      return this._m_mapSize;
-    }
-  });
 
   /**
-   * |flags
    * Terrain heightmap
    * 
    * The terrain geometry is a `map_size`x`map_size` grid of 256x256

@@ -27,20 +27,16 @@ import RSC from '../kaitai/Rsc';
 
 const areaPath = 'HUNTDAT/AREAS';
 
-const mapScale = 256; // size of one map square
-let mapHScale = 32; // Y scale for heightfield (*2 for C2)
-const terrainTexSize = 128; // terrain textures are 128x128 pix
-
 function createTextureArray(rsc: any) {
     // create data array
-    const data = new Uint16Array(rsc.textureCount * terrainTexSize * terrainTexSize);
+    const data = new Uint16Array(rsc.textureCount * rsc.textures[0].width * rsc.textures[0].height);
 
     // copy texture data
     let offset = 0;
     for (let i = 0; i < rsc.textureCount; i++) {
-        for (let j = 0; j < terrainTexSize * terrainTexSize; j++) {
+        for (let j = 0; j < rsc.textures[0].width * rsc.textures[0].height; j++) {
             // read RGBA5551...
-            let pixel = rsc.textures[i].data[j];
+            let pixel = (rsc.textures[i].data[j*2+1] << 8) | rsc.textures[i].data[j*2];
             let r = (pixel >> 10) & 0x1f;
             let g = ((pixel >>  5) & 0x1f) << 1;
             let b = (pixel >>  0) & 0x1f;
@@ -49,7 +45,7 @@ function createTextureArray(rsc: any) {
         }
     }
 
-    let tex = new DataTexture2DArray(data, terrainTexSize, terrainTexSize, rsc.textureCount);
+    let tex = new DataTexture2DArray(data, rsc.textures[0].width, rsc.textures[0].height, rsc.textureCount);
     tex.type = UnsignedShort565Type;
     tex.format = RGBFormat;
     tex.wrapT = tex.wrapS = RepeatWrapping;
@@ -62,25 +58,19 @@ function createGeometry(vertices: any[], faces: any[]) {
     let position: number[] = [];
     let uv: number[] = [];
     let index: number[] = [];
-    vertices.forEach(v => {
-        position.push(v.x, v.y, v.z);
-    });
-    function findUvForVertex(vIdx: number, u: number, v: number) {
-        // TODO: look for duplicate UVs and reuse
-        uv[vIdx * 2 + 0] = u;
-        uv[vIdx * 2 + 1] = v;
-        return vIdx;
-    }
-    let idx;
+    let idx = 0;
     faces.forEach(f => {
         let a = f.v1, b = f.v2, c = f.v3;
 
-        idx = findUvForVertex(a, f.tax / 256, f.tay / 256);
-        index.push(idx);
-        idx = findUvForVertex(b, f.tbx / 256, f.tby / 256);
-        index.push(idx);
-        idx = findUvForVertex(c, f.tcx / 256, f.tcy / 256);
-        index.push(idx);
+        position.push(vertices[a].x, vertices[a].y, vertices[a].z);
+        uv.push(f.tax / 256, f.tay / 256);
+        index.push(idx++);
+        position.push(vertices[b].x, vertices[b].y, vertices[b].z);
+        uv.push(f.tbx / 256, f.tby / 256);
+        index.push(idx++);
+        position.push(vertices[c].x, vertices[c].y, vertices[c].z);
+        uv.push(f.tcx / 256, f.tcy / 256);
+        index.push(idx++);
     });
 
     geo.setAttribute('position', new Float32BufferAttribute(position, 3));
@@ -91,19 +81,17 @@ function createGeometry(vertices: any[], faces: any[]) {
     return geo;
 }
 
-function createTexture(texData: Uint16Array, texSize: number) {
-    let width = 256;
-    let height = texSize / (width * 2);
-  
+function createTexture(texData: Uint8Array, width: number, height: number) {
     let data = new Uint16Array(width * height);
     let offset = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        let pixel = texData[y * width + x];
+        const j = y * width + x;
+        let pixel = (texData[j*2+1] << 8) | texData[j*2];
         let r = ((pixel >> 10) & 0x1f);
         let g = ((pixel >>  5) & 0x1f);
         let b = ((pixel >>  0) & 0x1f);
-        let a = (pixel & 0x80) ? 1 : 0; // ????
+        let a = 1; //(pixel & 0x80) ? 1 : 0; // ????
         data[offset++] = (r << 11) + (g << 6) + (b << 1) | a;
       }
     }
@@ -124,7 +112,7 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
     const halfMapSize = mapSize / 2;
 
     function getHeight(x: number, y: number) {
-        return map.heightMap[y * map.mapSize + x] * mapHScale;
+        return map.heightMap[y * map.mapSize + x] * map.yScale;
     }
 
     const matrix = new Matrix4();
@@ -133,9 +121,9 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
             const obj = map.objectMap[y * mapSize + x];
             if (obj < 254) {
                 matrix.makeTranslation(
-                    (x - halfMapSize) * mapScale,
+                    (x - halfMapSize) * map.tileSize,
                     getHeight(x, y),
-                    (y - halfMapSize) * mapScale)
+                    (y - halfMapSize) * map.tileSize)
                 if (!matrices[obj]) {
                     matrices[obj] = matrix.toArray();
                 } else {
@@ -148,9 +136,9 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
                     new MeshBasicMaterial({ color: 0xff0000 }),
                 )
                 indicator.position.set(
-                    (x - halfMapSize) * mapScale,
+                    (x - halfMapSize) * map.tileSize,
                     getHeight(x, y),
-                    (y - halfMapSize) * mapScale);
+                    (y - halfMapSize) * map.tileSize);
 
                 parent.add(indicator);
             } else if (obj === 255) {
@@ -163,7 +151,7 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
         if (matrices[obj]) {
             const count = matrices[obj].length / 16;
             const geo = createGeometry(mdl.model.vertices, mdl.model.faces);
-            const tex = createTexture(mdl.model.textureData, mdl.model.textureSize);
+            const tex = createTexture(mdl.model.textureData, mdl.model.textureWidth, mdl.model.textureHeight);
             const mesh = new InstancedMesh(
                 geo, new MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5 }),
                 count,
@@ -212,16 +200,13 @@ export async function loadArea(area: string) {
 
         const map = new MAP(new KaitaiStream(mapBuffer));
         const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
-        if (map.version == 2) {
-            mapHScale *= 2;
-        }
         console.log(rsc, map)
 
         // Create a plane with divisions as base for map heightfield
         const geo = new PlaneBufferGeometry(
-//            80 * mapScale, 80 * mapScale,
+//            80 * map.tileSize, 80 * map.tileSize,
 //            80 - 1, 80 - 1
-            map.mapSize * mapScale, map.mapSize * mapScale,
+            map.mapSize * map.tileSize, map.mapSize * map.tileSize,
             map.mapSize - 1, map.mapSize - 1
         );
 
@@ -233,14 +218,18 @@ export async function loadArea(area: string) {
         // World coordinates to uv transform (TODO investigate uvScaleMap/uvTransform?)
         const heightmapMatrix = new Matrix4().multiplyMatrices(
             new Matrix4().makeTranslation(0.5, 0, 0.5),
-            new Matrix4().makeScale(1 / (map.mapSize * mapScale), 1, 1 / (map.mapSize * mapScale)),
+            new Matrix4().makeScale(
+                1 / (map.mapSize * map.tileSize),
+                1,
+                1 / (map.mapSize * map.tileSize),
+            ),
         );
 
         let mat = new MeshBasicMaterial({ map: createTextureArray(rsc) });
         mat.defines = {
             'MAP_SIZE': `${map.mapSize}.0`,
             'CARNIVORES': map.version,
-            'MAP_HSCALE': `${mapHScale}.0`,
+            'MAP_HSCALE': `${map.yScale}.0`,
         };
         mat.onBeforeCompile = s => {
             console.log(s, map, rsc)

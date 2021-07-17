@@ -45,18 +45,12 @@ seq:
     repeat: expr
     repeat-expr: model_count
   - id: dawn_sky_texture
-    type: u2
-    repeat: expr
-    repeat-expr: sky_texture_size / 2
+    size: sky_texture_width * sky_texture_height * 2
     if: version == 2
   - id: day_sky_texture
-    type: u2
-    repeat: expr
-    repeat-expr: sky_texture_size / 2
+    size: sky_texture_width * sky_texture_height * 2
   - id: night_sky_texture
-    type: u2
-    repeat: expr
-    repeat-expr: sky_texture_size / 2
+    size: sky_texture_width * sky_texture_height * 2
     if: version == 2
   - id: clouds_map
     size: 128 * 128
@@ -87,8 +81,10 @@ seq:
     repeat-expr: water_count
     if: version == 2
 instances:
-  sky_texture_size:
-    value: 256 * 256 * 2
+  sky_texture_width:
+    value: 256
+  sky_texture_height:
+    value: 256
 
 types:
   rgb:
@@ -100,13 +96,16 @@ types:
       - id: b
         type: u4
 
-  # a 128x128 RGB5551 bitmap
   texture:
     seq:
       - id: data
-        type: u2
-        repeat: expr
-        repeat-expr: 128 * 128
+        size: width * height * 2
+        doc: raw RGBA5551 bitmap data
+    instances:
+      width:
+        value: 128
+      height:
+        value: 128
 
   model:
     seq:

@@ -15,7 +15,7 @@ seq:
     type: u1
     repeat: expr
     repeat-expr: map_size * map_size 
-    doc: |flags
+    doc: |
       Terrain heightmap
       
       The terrain geometry is a `map_size`x`map_size` grid of 256x256
@@ -108,9 +108,13 @@ instances:
   version:
     value:  _io.size == 0x220000 ? 1 : _io.size == 0xD80000 ? 2 : 0
   is_valid:
-      value: version == 1 or version == 2
+    value: version == 1 or version == 2
   map_size:
-      value: version * 512
+    value: version * 512
+  map_tile_size:
+    value: 256
+  map_y_scale:
+    value: version == 2 ? 64 : 32
 
 types:
   flags_v1:
@@ -143,7 +147,7 @@ types:
 
   flags_v2:
     seq:
-      # LSB of word
+      # lsb of word
       - id: f_tex_direction
         type: b2
         doc: |
@@ -168,7 +172,7 @@ types:
         type: b1
       - id: f_water
         type: b1
-        # MSB of word
+        # msb of word
       - id: f_tex2_direction
         type: b2
       - id: unused2

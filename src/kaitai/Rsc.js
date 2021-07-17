@@ -1,5 +1,5 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
-const define = undefined;
+const define = undefined, self = undefined;
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     define(['kaitai-struct/KaitaiStream', './C3df'], factory);
@@ -8,12 +8,12 @@ const define = undefined;
   } else {
     root.Rsc = factory(root.KaitaiStream, root.C3df);
   }
-}(this, function (KaitaiStream, C3df) {
+}(typeof self !== 'undefined' ? self : this, function (KaitaiStream, C3df) {
 /**
  * @see {@link https://www.tapatalk.com/groups/the_carnivores_saga/carnivores-2-and-ice-age-rsc-files-t2316.html|Source}
  */
 
- var Rsc = (function() {
+var Rsc = (function() {
   Rsc.AudioReverb = Object.freeze({
     GENERIC: 0,
     PLATE: 1,
@@ -68,20 +68,11 @@ const define = undefined;
       this.models[i] = new Model(this._io, this, this._root);
     }
     if (this.version == 2) {
-      this.dawnSkyTexture = new Array(Math.floor(this.skyTextureSize / 2));
-      for (var i = 0; i < Math.floor(this.skyTextureSize / 2); i++) {
-        this.dawnSkyTexture[i] = this._io.readU2le();
-      }
+      this.dawnSkyTexture = this._io.readBytes(((this.skyTextureWidth * this.skyTextureHeight) * 2));
     }
-    this.daySkyTexture = new Array(Math.floor(this.skyTextureSize / 2));
-    for (var i = 0; i < Math.floor(this.skyTextureSize / 2); i++) {
-      this.daySkyTexture[i] = this._io.readU2le();
-    }
+    this.daySkyTexture = this._io.readBytes(((this.skyTextureWidth * this.skyTextureHeight) * 2));
     if (this.version == 2) {
-      this.nightSkyTexture = new Array(Math.floor(this.skyTextureSize / 2));
-      for (var i = 0; i < Math.floor(this.skyTextureSize / 2); i++) {
-        this.nightSkyTexture[i] = this._io.readU2le();
-      }
+      this.nightSkyTexture = this._io.readBytes(((this.skyTextureWidth * this.skyTextureHeight) * 2));
     }
     this.cloudsMap = this._io.readBytes((128 * 128));
     this.fogCount = this._io.readU4le();
@@ -305,20 +296,45 @@ const define = undefined;
       this._read();
     }
     Texture.prototype._read = function() {
-      this.data = new Array((128 * 128));
-      for (var i = 0; i < (128 * 128); i++) {
-        this.data[i] = this._io.readU2le();
-      }
+      this.data = this._io.readBytes(((this.width * this.height) * 2));
     }
+    Object.defineProperty(Texture.prototype, 'width', {
+      get: function() {
+        if (this._m_width !== undefined)
+          return this._m_width;
+        this._m_width = 128;
+        return this._m_width;
+      }
+    });
+    Object.defineProperty(Texture.prototype, 'height', {
+      get: function() {
+        if (this._m_height !== undefined)
+          return this._m_height;
+        this._m_height = 128;
+        return this._m_height;
+      }
+    });
+
+    /**
+     * raw RGBA5551 bitmap data
+     */
 
     return Texture;
   })();
-  Object.defineProperty(Rsc.prototype, 'skyTextureSize', {
+  Object.defineProperty(Rsc.prototype, 'skyTextureWidth', {
     get: function() {
-      if (this._m_skyTextureSize !== undefined)
-        return this._m_skyTextureSize;
-      this._m_skyTextureSize = ((256 * 256) * 2);
-      return this._m_skyTextureSize;
+      if (this._m_skyTextureWidth !== undefined)
+        return this._m_skyTextureWidth;
+      this._m_skyTextureWidth = 256;
+      return this._m_skyTextureWidth;
+    }
+  });
+  Object.defineProperty(Rsc.prototype, 'skyTextureHeight', {
+    get: function() {
+      if (this._m_skyTextureHeight !== undefined)
+        return this._m_skyTextureHeight;
+      this._m_skyTextureHeight = 256;
+      return this._m_skyTextureHeight;
     }
   });
 
