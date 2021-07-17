@@ -8,7 +8,6 @@ import {
     InstancedMesh,
     Matrix4,
     Mesh,
-    MeshLambertMaterial,
     MeshBasicMaterial,
     PlaneBufferGeometry,
     RepeatWrapping,
@@ -153,7 +152,7 @@ function createInstancedModels(rsc: any, map: any, parent: Group) {
             const geo = createGeometry(mdl.model.vertices, mdl.model.faces);
             const tex = createTexture(mdl.model.textureData, mdl.model.textureWidth, mdl.model.textureHeight);
             const mesh = new InstancedMesh(
-                geo, new MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.5 }),
+                geo, new MeshBasicMaterial({ map: tex, fog: true, transparent: true, alphaTest: 0.5 }),
                 count,
             );
             for (let i = 0; i < count; i++) {
@@ -194,143 +193,175 @@ function buildFragmentMap(map: any) {
 export async function loadArea(area: string) {
     let scene = new Group();
 
-    try {
-        const mapBuffer = await fetch(`${areaPath}/${area}.MAP`).then(body => body.arrayBuffer());
-        const rscBuffer = await fetch(`${areaPath}/${area}.RSC`).then(body => body.arrayBuffer());
+    const mapBuffer = await fetch(`${areaPath}/${area}.MAP`).then(body => body.arrayBuffer());
+    const rscBuffer = await fetch(`${areaPath}/${area}.RSC`).then(body => body.arrayBuffer());
 
-        const map = new MAP(new KaitaiStream(mapBuffer));
-        const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
-        console.log(rsc, map)
+    const map = new MAP(new KaitaiStream(mapBuffer));
+    const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
+    console.log(rsc, map)
 
-        // Create a plane with divisions as base for map heightfield
-        const geo = new PlaneBufferGeometry(
+    // Create a plane with divisions as base for map heightfield
+    const geo = new PlaneBufferGeometry(
 //            80 * map.tileSize, 80 * map.tileSize,
 //            80 - 1, 80 - 1
-            map.mapSize * map.tileSize, map.mapSize * map.tileSize,
-            map.mapSize - 1, map.mapSize - 1
-        );
+        map.mapSize * map.tileSize, map.mapSize * map.tileSize,
+        map.mapSize - 1, map.mapSize - 1
+    );
 
-        // Lay it flat
-        geo.rotateX(-Math.PI / 2);
+    // Lay it flat
+    geo.rotateX(-Math.PI / 2);
 
-        createInstancedModels(rsc, map, scene);
+    createInstancedModels(rsc, map, scene);
 
-        // World coordinates to uv transform (TODO investigate uvScaleMap/uvTransform?)
-        const heightmapMatrix = new Matrix4().multiplyMatrices(
-            new Matrix4().makeTranslation(0.5, 0, 0.5),
-            new Matrix4().makeScale(
-                1 / (map.mapSize * map.tileSize),
-                1,
-                1 / (map.mapSize * map.tileSize),
-            ),
-        );
+    // World coordinates to uv transform (TODO investigate uvScaleMap/uvTransform?)
+    const heightmapMatrix = new Matrix4().multiplyMatrices(
+        new Matrix4().makeTranslation(0.5, 0, 0.5),
+        new Matrix4().makeScale(
+            1 / (map.mapSize * map.tileSize),
+            1,
+            1 / (map.mapSize * map.tileSize),
+        ),
+    );
 
-        let mat = new MeshBasicMaterial({ map: createTextureArray(rsc) });
-        mat.defines = {
-            'MAP_SIZE': `${map.mapSize}.0`,
-            'CARNIVORES': map.version,
-            'MAP_HSCALE': `${map.yScale}.0`,
-        };
-        mat.onBeforeCompile = s => {
-            console.log(s, map, rsc)
-            // Create our (integer) data textures for
-            // fragment and vertex shader
-            let vertexMap = buildVertexMap(map);
-            let fragmentMap = buildFragmentMap(map);
-            s.uniforms['vertexMap'] = { value: vertexMap, };
-            s.uniforms['fragmentMap'] = { value: fragmentMap, };
-            s.uniforms['heightmapMatrix'] = { value: heightmapMatrix, };
+    let mat = new MeshBasicMaterial({ map: createTextureArray(rsc), fog: true });
+    console.log(mat.defines);
+    mat.defines = {
+        'MAP_SIZE': `${map.mapSize}.0`,
+        'CARNIVORES': map.version,
+        'MAP_HSCALE': `${map.yScale}.0`,
+    };
+    mat.onBeforeCompile = s => {
+        console.log(s, map, rsc)
+        // Create our (integer) data textures for
+        // fragment and vertex shader
+        let vertexMap = buildVertexMap(map);
+        let fragmentMap = buildFragmentMap(map);
+        s.uniforms['vertexMap'] = { value: vertexMap, };
+        s.uniforms['fragmentMap'] = { value: fragmentMap, };
+        s.uniforms['heightmapMatrix'] = { value: heightmapMatrix, };
 
-            // Adjust vertex shader
-            let vs = s.vertexShader;
-            vs = vs.replace('#include <common>', `
-                precision highp usampler2D;
-                uniform usampler2D vertexMap;
-                uniform mat4 heightmapMatrix;
-                varying vec4 vLighting;
-            `)
-            vs = vs.replace('#include <color_vertex>', `
-            vUv = (heightmapMatrix * modelMatrix * vec4(position, 1.0)).xz;
-            uvec4 tex = texture(vertexMap, vUv);
-            #if CARNIVORES == 1
-            float light = 1.0 - (float(tex.g) / 64.0);
-            #else
-            float light = float(tex.g) / 255.0;
-            #endif
-            vLighting = vec4(light, light, light, 1.0);
-            #include <color_vertex>
-            `)
-            vs = vs.replace('#include <begin_vertex>', `
-            #include <begin_vertex>
-            transformed.y += float(tex.r) * MAP_HSCALE;
-            `)
-            s.vertexShader = vs;
-            // Adjust the fragment shader
-            let fs = s.fragmentShader;
-            fs = fs.replace('#include <map_pars_fragment>', `
-            precision highp sampler2DArray;
+        // Adjust vertex shader
+        let vs = s.vertexShader;
+        vs = vs.replace('#include <common>', `
             precision highp usampler2D;
-            uniform sampler2DArray map;
-            uniform usampler2D fragmentMap;
+            uniform usampler2D vertexMap;
+            uniform mat4 heightmapMatrix;
             varying vec4 vLighting;
-            `);
-            fs = fs.replace('#include <map_fragment>', `
-            vec2 tilePos = vUv * MAP_SIZE;
-            vec2 localTileUv = tilePos - floor(tilePos);
-            uvec4 tex = texture(fragmentMap, vUv);
-            float triside = ((1.0-localTileUv.x) - localTileUv.y);
-            diffuseColor = vLighting;
-            switch(tex.b & 3u) {
-                case 0u:
-                    //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
-                    break;
-                case 1u:
-                    float t = localTileUv.x;
-                    localTileUv.x = localTileUv.y;
-                    localTileUv.y = 1.0 - t;
-                    //diffuseColor = vec4(0.5, 0.0, 0.0, 1.0);
-                    break;
-                case 2u:
-                    localTileUv.x = 1.0 - localTileUv.x;
-                    localTileUv.y = 1.0 - localTileUv.y;
-                    //diffuseColor = vec4(0.5, 0.5, 0.0, 1.0);
-                    break;
-                case 3u:
-                    float x = localTileUv.x;
-                    localTileUv.x = 1.0 - localTileUv.y;
-                    localTileUv.y = x;
-                    //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
-                    break;
-            }
-            uint depth = tex.r;
-            #if CARNIVORES == 1
-            if (triside >= 0.0) {
-                depth = (tex.b & 64u) != 0u ? tex.r : tex.g;
-            } else {
-                depth = (tex.b & 64u) != 0u ? tex.g : tex.r;
-            }
-            #endif
-            #ifdef DEBUG_REVERSE_FLAG
-            if ((tex.b & 64u) != 0u) {
-                diffuseColor = vec4(0.6, 0.6, 0.6, 1.0);
-            } else {
-                diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
-            }
-            #endif
-            vec4 texelColor = texture( map, vec3(localTileUv, depth) );
-            texelColor = mapTexelToLinear( texelColor );
-            diffuseColor *= texelColor;
-            //diffuseColor = vec4(localTileUv, 0.0, 1.0);
-            `)
-            s.fragmentShader = fs;
+        `)
+        vs = vs.replace('#include <color_vertex>', `
+        vUv = (heightmapMatrix * modelMatrix * vec4(position, 1.0)).xz;
+        uvec4 tex = texture(vertexMap, vUv);
+        #if CARNIVORES == 1
+        float light = 1.0 - (float(tex.g) / 64.0);
+        #else
+        float light = float(tex.g) / 255.0;
+        #endif
+        vLighting = vec4(light, light, light, 1.0);
+        #include <color_vertex>
+        `)
+        vs = vs.replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        transformed.y += float(tex.r) * MAP_HSCALE;
+        `)
+        s.vertexShader = vs;
+        // Adjust the fragment shader
+        let fs = s.fragmentShader;
+        fs = fs.replace('#include <map_pars_fragment>', `
+        precision highp sampler2DArray;
+        precision highp usampler2D;
+        uniform sampler2DArray map;
+        uniform usampler2D fragmentMap;
+        varying vec4 vLighting;
+        `);
+        fs = fs.replace('#include <map_fragment>', `
+        vec2 tilePos = vUv * MAP_SIZE;
+        vec2 localTileUv = tilePos - floor(tilePos);
+        uvec4 tex = texture(fragmentMap, vUv);
+        float triside = ((1.0-localTileUv.x) - localTileUv.y);
+        diffuseColor = vLighting;
+        switch(tex.b & 3u) {
+            case 0u:
+                //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
+                break;
+            case 1u:
+                float t = localTileUv.x;
+                localTileUv.x = localTileUv.y;
+                localTileUv.y = 1.0 - t;
+                //diffuseColor = vec4(0.5, 0.0, 0.0, 1.0);
+                break;
+            case 2u:
+                localTileUv.x = 1.0 - localTileUv.x;
+                localTileUv.y = 1.0 - localTileUv.y;
+                //diffuseColor = vec4(0.5, 0.5, 0.0, 1.0);
+                break;
+            case 3u:
+                float x = localTileUv.x;
+                localTileUv.x = 1.0 - localTileUv.y;
+                localTileUv.y = x;
+                //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
+                break;
         }
-
-        // Okay, terrain done!
-        scene.add(new Mesh(geo, mat));
-    } catch (e) {
-        console.error(e)
-        return undefined;
+        uint depth = tex.r;
+        #if CARNIVORES == 1
+        if (triside >= 0.0) {
+            depth = (tex.b & 64u) != 0u ? tex.r : tex.g;
+        } else {
+            depth = (tex.b & 64u) != 0u ? tex.g : tex.r;
+        }
+        #endif
+        #ifdef DEBUG_REVERSE_FLAG
+        if ((tex.b & 64u) != 0u) {
+            diffuseColor = vec4(0.6, 0.6, 0.6, 1.0);
+        } else {
+            diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+        #endif
+        vec4 texelColor = texture( map, vec3(localTileUv, depth) );
+        texelColor = mapTexelToLinear( texelColor );
+        diffuseColor *= texelColor;
+        //diffuseColor = vec4(localTileUv, 0.0, 1.0);
+        `)
+        s.fragmentShader = fs;
     }
 
-    return scene;
+    // Okay, terrain done!
+    scene.add(new Mesh(geo, mat));
+
+    function getHeightAt(x: number, z: number) {
+        // GetLandUpH (without fReverse handling)
+        const tileSize = map.tileSize;
+        const mapSize = map.mapSize;
+        const heightMap = map.heightMap!;
+
+        x += (mapSize * tileSize) / 2;
+        z += (mapSize * tileSize) / 2;
+
+        const cx = Math.floor(x / tileSize);
+        const cy = Math.floor(z / tileSize);
+        const dx = Math.floor(x % tileSize);
+        const dy = Math.floor(z % tileSize);
+     
+        let h1 = heightMap[cy * mapSize + cx];
+        let h2 = heightMap[cy * mapSize + cx +1];
+        let h3 = heightMap[(cy + 1) * mapSize + cx +1];
+        let h4 = heightMap[(cy + 1) * mapSize + cx];
+
+        if (dx > dy) {
+            h4 = h1 + h3 - h2;
+        } else {
+            h2 = h1 + h3 - h4;
+        }
+     
+        let h = 
+            (h1 * (256 - dx) + h2 * dx) * (256 - dy) +
+            (h4 * (256 - dx) + h3 * dx) * dy;
+     
+        const height =  h / 256 / 256 * map.yScale;
+        return height;
+    }
+
+    return {
+        getHeightAt,
+        group: scene
+    };
 }

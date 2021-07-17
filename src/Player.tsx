@@ -1,7 +1,7 @@
 import React from 'react'
 
 import { useFrame } from '@react-three/fiber';
-import { Clock, Matrix4, Quaternion, Vector3 } from 'three';
+import { Clock, Vector3 } from 'three';
 
 const controls = {
     forward: false,
@@ -37,69 +37,54 @@ export default function Player({ getHeightAt }: Props) {
         }
     })
 
-    const motion = new Vector3();
     const velocity = new Vector3();
-    const quat = new Quaternion();
-    const matrix = new Matrix4();
+    const direction = new Vector3();
+    const _vector = new Vector3();
     let onGround = false;
 
-    const clock = new Clock();
-    useFrame(({ camera }) => {
-        const delta = clock.getDelta();
-        let speed = delta * 32.0;
-        if (controls.run) {
-            // Holding shift increases speed
-            speed *= 1.5;
-        }
-        motion.set(0,0,0);
-        if (controls.forward) {
-            motion.z -= speed;
-        }
-        if (controls.backward) {
-            motion.z += speed;
-        }
-        if (controls.left) {
-            motion.x -= speed;
-        }
-        if (controls.right) {
-            motion.x += speed;
-        }
+    const velocityDrag = 10.0;
+    const mass = 100.0;
+    const gravity = 9.8;
+    const speed = 7000.0;
+    const eyeHeight = 220;
+    const clock  = new Clock();
 
-        camera.getWorldQuaternion(quat);
-        matrix.makeRotationY(quat.y);
-        motion.applyMatrix4(matrix);
-        velocity.add(motion);
-        let nextPosition = camera.position.clone();
-        nextPosition.add(velocity);
-        if (onGround) {
-            velocity.x *= 0.95;
-            velocity.z *= 0.95;
-        } else {
-            // Less friction in air
-            velocity.x *= 0.97;
-            velocity.z *= 0.97;
-            // Gravity
-            velocity.y -= delta * 3;
-        }
-        let x = nextPosition.x;
-        let y = nextPosition.y;
-        let z = nextPosition.z;
-        /* Constrain position to terrain bounds
-        if (x < 0 || x >= terrain.width - 1) {
-            x = this.position.x;
-        }
-        if (z < 0 || z >= terrain.height - 1) {
-            z = this.position.z;
-        }*/
-        camera.position.x = x;
-        camera.position.z = z;
-        let ground = 7 + getHeightAt(x, z);
-        if (onGround || y <= ground) {
-            y = ground;
+    useFrame(({ camera }) => {
+        let delta = clock.getDelta();
+
+        velocity.x -= velocity.x * velocityDrag * delta;
+        velocity.z -= velocity.z * velocityDrag * delta;
+
+        velocity.y -= gravity * mass * delta;
+
+        direction.z = Number( controls.forward ) - Number( controls.backward );
+        direction.x = Number( controls.right ) - Number( controls.left );
+        direction.normalize(); // this ensures consistent movements in all directions
+
+        if ( controls.forward || controls.backward ) velocity.z -= direction.z * speed * delta;
+        if ( controls.left || controls.right ) velocity.x -= direction.x * speed * delta;
+
+        // move right
+        _vector.setFromMatrixColumn( camera.matrix, 0 );
+        camera.position.addScaledVector( _vector, - velocity.x * delta );
+
+        // move forward
+        _vector.setFromMatrixColumn( camera.matrix, 0 );
+        _vector.crossVectors( camera.up, _vector );
+        camera.position.addScaledVector( _vector, -velocity.z * delta );
+
+        // move down
+        camera.position.y += ( velocity.y * delta );
+
+        const height = getHeightAt(camera.position.x, camera.position.z);
+        if ( camera.position.y < height + eyeHeight ) {
+
             velocity.y = 0;
+            camera.position.y = height + eyeHeight;
+
             onGround = true;
         }
-        camera.position.y = y;
+
     })
 
     return null; // No object for player, since we're using the camera
