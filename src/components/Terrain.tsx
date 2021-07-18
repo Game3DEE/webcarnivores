@@ -117,8 +117,6 @@ function Terrain({
         return geo;
     }, [viewDistance]);
 
-    console.log(geometry, material)
-
     return (
         <mesh position={position} geometry={geometry} material={material} />
     )

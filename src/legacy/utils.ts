@@ -10,7 +10,7 @@ export function createTexture(texData: Uint8Array, width: number, height: number
         let r = ((pixel >> 10) & 0x1f);
         let g = ((pixel >>  5) & 0x1f);
         let b = ((pixel >>  0) & 0x1f);
-        let a = 1; //(pixel & 0x80) ? 1 : 0; // ????
+        let a = pixel ? 1 : 0;
         data[offset++] = (r << 11) + (g << 6) + (b << 1) | a;
       }
     }

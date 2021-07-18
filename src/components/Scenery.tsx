@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, InstancedMesh, Matrix4, MeshBasicMaterial } from 'three';
+import { DoubleSide, Group, InstancedMesh, Matrix4, MeshBasicMaterial } from 'three';
 import C3DFGeometry from '../legacy/C3DFGeometry';
 import { createTexture } from '../legacy/utils';
 
@@ -36,11 +36,10 @@ function Scenery({ map, rsc, getHeightAt }: Props) {
         rsc.models.forEach((mdl: any, obj: number) => {
             if (matrices[obj]) {
                 const count = matrices[obj].length / 16;
-                console.log('obj', obj, '#', count)
                 const geo = new C3DFGeometry(mdl.model);
                 const tex = createTexture(mdl.model.textureData, mdl.model.textureWidth, mdl.model.textureHeight);
                 const mesh = new InstancedMesh(
-                    geo, new MeshBasicMaterial({ map: tex, fog: true, transparent: true, alphaTest: 0.5 }),
+                    geo, new MeshBasicMaterial({ map: tex, fog: true, transparent: true, alphaTest: 0.5, side: DoubleSide }),
                     count,
                 );
                 for (let i = 0; i < count; i++) {

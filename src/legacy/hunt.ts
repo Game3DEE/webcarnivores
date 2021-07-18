@@ -45,7 +45,14 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
     const landings = getLandings(map);
 
     function getLandH(x: number, z: number) {
-        const { tileSize, mapSize, waterMap } = map;
+        const { tileSize, mapSize } = map;
+
+        // XXX problem for C1/C2 compatibility!
+        // C1: waterMap has water "floor" heights, while heightmap has water "level" heights
+        // C2: heightMap has water "floor" heights, waterMap contains indices into water table
+        //     specifying water levels.
+        const hmap = map.version == 1 ? 'waterMap' : 'heightMap';
+        const compensation = map.version == 1 ? 48 : 0;
 
         if (x < 0) x = 0;
         if (z < 0) z = 0;
@@ -55,14 +62,10 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         const dx = Math.floor(x % tileSize);
         const dy = Math.floor(z % tileSize);
      
-        // XXX problem for C1/C2 compatibility!
-        // C1: waterMap has water "floor" heights, while heightmap has water "level" heights
-        // C2: heightMap has water "floor" heights, waterMap contains indices into water table
-        //     specifying water levels.
-        let h1 = waterMap![cy * mapSize + cx];
-        let h2 = waterMap![cy * mapSize + cx +1];
-        let h3 = waterMap![(cy + 1) * mapSize + cx +1];
-        let h4 = waterMap![(cy + 1) * mapSize + cx];
+        let h1 = map[hmap]![cy * mapSize + cx];
+        let h2 = map[hmap]![cy * mapSize + cx +1];
+        let h3 = map[hmap]![(cy + 1) * mapSize + cx +1];
+        let h4 = map[hmap]![(cy + 1) * mapSize + cx];
 
         if (map.flagsMap![cy * mapSize + cx].fReverse) {
             if (256 - dx > dy)
@@ -81,7 +84,7 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
             (h1 * (256 - dx) + h2 * dx) * (256 - dy) +
             (h4 * (256 - dx) + h3 * dx) * dy;
      
-        return  (h / 256 / 256 - 48) * map.yScale;
+        return  (h / 256 / 256 - compensation) * map.yScale;
     }
 
     function getLandQHNoObj(x: number, z: number) {  
