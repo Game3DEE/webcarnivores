@@ -51,7 +51,7 @@ function Scenery({ map, rsc, getHeightAt }: Props) {
         })
 
         return parent;
-    }, [rsc, map]);
+    }, [rsc, map, getHeightAt]);
 
     return (
         <primitive object={group} />

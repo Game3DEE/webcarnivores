@@ -41,9 +41,7 @@ seq:
     repeat: expr
     repeat-expr: vert_count
   - id: texture_data
-    type: u2
-    repeat: expr
-    repeat-expr: texture_size / 2
+    size: texture_size
     doc: Texture data in RGBA5551 format
   - id: animations
     type: animation

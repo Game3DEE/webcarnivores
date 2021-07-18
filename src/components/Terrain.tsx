@@ -115,7 +115,7 @@ function Terrain({
             map.mapSize * map.tileSize / 2
         );
         return geo;
-    }, [viewDistance]);
+    }, [/*viewDistance, */map.mapSize, map.tileSize]);
 
     return (
         <mesh position={position} geometry={geometry} material={material} />

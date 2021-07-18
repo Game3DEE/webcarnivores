@@ -1,3 +1,8 @@
+// Legacy file, feel free to move code out.
+// It should turn into CPC(Load).ts, only
+// handling loading the MAP/RSC file and
+// compensating for any C1/C2 differences
+// where necessary.
 import KaitaiStream from 'kaitai-struct/KaitaiStream';
 import {
     Vector3,
