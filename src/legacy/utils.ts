@@ -1,6 +1,6 @@
 import { DataTexture, RGBAFormat, UnsignedShort5551Type } from "three";
 
-export function createTexture(texData: Uint8Array, width: number, height: number) {
+export function createTexture(texData: Uint8Array, width: number, height: number, useAlpha: boolean = true) {
     let data = new Uint16Array(width * height);
     let offset = 0;
     for (let y = 0; y < height; y++) {
@@ -10,7 +10,7 @@ export function createTexture(texData: Uint8Array, width: number, height: number
         let r = ((pixel >> 10) & 0x1f);
         let g = ((pixel >>  5) & 0x1f);
         let b = ((pixel >>  0) & 0x1f);
-        let a = pixel ? 1 : 0;
+        let a = useAlpha ? (pixel ? 1 : 0) : 1;
         data[offset++] = (r << 11) + (g << 6) + (b << 1) | a;
       }
     }

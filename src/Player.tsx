@@ -1,8 +1,7 @@
 import React from 'react'
 
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { Clock, Vector3 } from 'three';
-import CARLoader from './legacy/CARLoader';
 
 const controls = {
     forward: false,
@@ -10,7 +9,6 @@ const controls = {
     left: false,
     right: false,
     run: false,
-    anim: 0,
 }
 
 function handleKeys(event: KeyboardEvent) {
@@ -21,12 +19,6 @@ function handleKeys(event: KeyboardEvent) {
     // XXX is this better handled by calling event.preventDefault()?
     if (event.altKey) return;
     switch(event.key.toLowerCase()) {
-        case '1': controls.anim = 1; break;
-        case '2': controls.anim = 2; break;
-        case '3': controls.anim = 3; break;
-        case '4': controls.anim = 4; break;
-        case '5': controls.anim = 5; break;
-        case '6': controls.anim = 6; break;
         case 'w': controls.forward = down; break;
         case 's': controls.backward = down; break;
         case 'a': controls.left = down; break;
@@ -42,10 +34,6 @@ interface Props {
 }
 
 export default function Player({ getHeightAt, landings }: Props) {
-    const hunter = useLoader(CARLoader,'HUNTDAT/STEGO.CAR');
-    console.log(hunter);
-    let anim = 0;
-
     React.useEffect(() => {
         document.addEventListener('keydown', handleKeys);
         document.addEventListener('keyup', handleKeys);
@@ -75,19 +63,6 @@ export default function Player({ getHeightAt, landings }: Props) {
         if (initial) {
             camera.position.copy(initPos);
             initial = false;
-        }
-
-        if (controls.anim != anim) {
-            let oldAnim = anim;
-            anim = controls.anim;
-            const keys = Object.keys(hunter.animationsMap);
-            if (oldAnim != 0) {
-                hunter.stopAnimation(keys[oldAnim]);
-                for (let i = 0; i < hunter.morphTargetInfluences!.length; i++) {
-                    hunter.morphTargetInfluences![i] = 0;
-                }
-            }
-            hunter.playAnimation(keys[anim]);
         }
 
         velocity.x -= velocity.x * velocityDrag * delta;
@@ -123,13 +98,7 @@ export default function Player({ getHeightAt, landings }: Props) {
 
             //onGround = true;
         }
-
-        if (hunter) {
-            hunter.update(delta);
-        }
     })
 
-    return (
-        <primitive object={hunter} scale={10} position={[256*256,4000,256*256]} />
-    )
+    return null
 }
