@@ -1,28 +1,22 @@
 import {
+    AnimationClip,
     BufferGeometry,
     DoubleSide,
     Float32BufferAttribute,
     Loader,
-    LoadingManager,
+    Mesh,
     MeshBasicMaterial,
+    MorphTarget,
 } from 'three'
-
-import {
-    MorphBlendMesh
-} from 'three/examples/jsm/misc/MorphBlendMesh';
 
 import CAR from '../kaitai/Car';
 import KaitaiStream from 'kaitai-struct/KaitaiStream';
 import { createTexture } from './utils';
 
 export default class CARLoader extends Loader {
-	constructor(manager?: LoadingManager) {
-		super(manager);
-	}
-
     load(
         url: string,
-        onLoad: (character: MorphBlendMesh) => void,
+        onLoad: (character: Mesh) => void,
         onProgress: (event: ProgressEvent) => void, // XXX no progress support yet
         onError: (event: Error | ErrorEvent ) => void,
      ) {
@@ -93,13 +87,24 @@ export default class CARLoader extends Loader {
             morphTargets: true,
         })
 
-        let mesh = new MorphBlendMesh(geo, mat);
+        let mesh = new Mesh(geo, mat);
 
         // Create animation clips
-        globalFrameIndex = 0;
         car.animations?.forEach(anim => {
-            mesh.createAnimation(anim.name, globalFrameIndex, globalFrameIndex + anim.frameCount -1, anim.framesPerSecond);
-            globalFrameIndex += anim.frameCount;
+            const seq: MorphTarget[] = [];
+            for (let i = 0; i < anim.frameCount; i++) {
+                seq.push({
+                    name: `${anim.name}.${i}`,
+                    vertices: [], // seems unused
+                })
+            }
+            const clip = AnimationClip.CreateFromMorphTargetSequence(
+                anim.name,
+                seq,
+                anim.framesPerSecond,
+                false /*noLoop*/
+            );
+            mesh.animations.push(clip);
         })
 
         return mesh;

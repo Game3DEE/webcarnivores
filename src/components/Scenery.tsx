@@ -1,7 +1,6 @@
 import React from 'react';
-import { DoubleSide, Group, InstancedMesh, Matrix4, MeshBasicMaterial } from 'three';
-import C3DFGeometry from '../legacy/C3DFGeometry';
-import { createTexture } from '../legacy/utils';
+import { Group, InstancedMesh, Matrix4 } from 'three';
+import C3DFLoader from '../legacy/C3DFLoader';
 
 interface Props {
     map: any;
@@ -33,13 +32,14 @@ function Scenery({ map, rsc, getHeightAt }: Props) {
             }
         }
 
+        const loader = new C3DFLoader();
+
         rsc.models.forEach((mdl: any, obj: number) => {
             if (matrices[obj]) {
                 const count = matrices[obj].length / 16;
-                const geo = new C3DFGeometry(mdl.model);
-                const tex = createTexture(mdl.model.textureData, mdl.model.textureWidth, mdl.model.textureHeight);
+                const { geometry, material } = loader._parse(mdl.model);
                 const mesh = new InstancedMesh(
-                    geo, new MeshBasicMaterial({ map: tex, fog: true, transparent: true, alphaTest: 0.5, side: DoubleSide }),
+                    geometry, material,
                     count,
                 );
                 for (let i = 0; i < count; i++) {

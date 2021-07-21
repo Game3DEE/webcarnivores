@@ -48,9 +48,11 @@ var Car = (function() {
     for (var i = 0; i < this.soundEffectCount; i++) {
       this.soundEffects[i] = new SoundEffect(this._io, this, this._root);
     }
-    this.animSoundMap = new Array(64);
-    for (var i = 0; i < 64; i++) {
-      this.animSoundMap[i] = this._io.readS4le();
+    this.animSoundMap = [];
+    var i = 0;
+    while (!this._io.isEof()) {
+      this.animSoundMap.push(this._io.readS4le());
+      i++;
     }
   }
 

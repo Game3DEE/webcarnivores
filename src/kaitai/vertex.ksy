@@ -18,5 +18,7 @@ seq:
     type: f4
   - id: owner
     type: s2
+    doc: bone to which vertex is attached
   - id: hide
     type: u2
+    doc: whether the vertex is hidden in Designer 2; has no effect in-game

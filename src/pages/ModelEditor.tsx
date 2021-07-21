@@ -1,44 +1,65 @@
-import { OrbitControls } from '@react-three/drei';
-import { Canvas, useLoader } from '@react-three/fiber';
 import React from 'react';
-import { useEffect } from 'react';
+import { OrbitControls, useAnimations } from '@react-three/drei';
+import { Canvas, useLoader } from '@react-three/fiber';
 import DatGui, { DatSelect } from 'react-dat-gui';
-import { Clock } from 'three';
+import { Loader, Mesh } from 'three';
 
 import CARLoader from '../legacy/CARLoader';
+import C3DFLoader from '../legacy/C3DFLoader';
+
+class WrapperLoader extends Loader {
+    load(
+        url: string,
+        onLoad: (character: Mesh) => void,
+        onProgress: (event: ProgressEvent) => void,
+        onError: (event: Error | ErrorEvent ) => void,
+    ) {
+        const [ type, uri ] = url.split('~');
+        if (type === '3DF') {
+            return new C3DFLoader().load(uri, onLoad, onProgress, onError)
+        } else if (type === 'CAR') {
+            return new CARLoader().load(uri, onLoad, onProgress, onError)
+        }
+
+        return null;
+    }
+}
 
 interface Props {
     modelUri: string;
 }
-function ModelViewer({ modelUri }: Props) {
-    const model = useLoader(CARLoader, modelUri);
-    const animations = Object.keys(model.animationsMap);
-    const [ data, setData ] = React.useState({ animation: '' });
-    const clock = new Clock();
 
-    useEffect(() => {
-        const intvHandle = setInterval(() => {
-            const delta = clock.getDelta();
-            model.update(delta);    
-        }, 1000/60);
-        return () => clearInterval(intvHandle);
-    });
+interface ModelProps {
+    animation: string;
+    model: Mesh;
+}
 
-    function handleUpdate(updated: any) {
-        console.log(data, updated);
-        if (data.animation) {
-            model.stopAnimation(data.animation);
-            for (let i = 0; i < model.morphTargetInfluences!.length; i++) {
-                model.morphTargetInfluences![i] = 0;
-            }        
-        }
-        model.playAnimation(updated.animation);
-        setData(updated);
-    }
+function Model({ model, animation }: ModelProps) {
+    const { actions, ref } = useAnimations(model.animations);
+
+    React.useEffect(() => {
+        actions[animation]?.play();
+        return () => { actions[animation]?.stop(); }
+    })
 
     return (
-    <>
-        <DatGui data={data} onUpdate={handleUpdate}>
+        <primitive ref={ref} object={model} />
+    )
+}
+
+function ModelViewer({ modelUri }: Props) {
+    const model = useLoader(WrapperLoader, modelUri);
+    const [ data, setData ] = React.useState({ animation: '' });
+
+    const animations = React.useMemo(() => {
+        const anims = [ '' ];
+        model.animations.forEach(a => anims.push(a.name));
+        return anims;
+    }, [ model ])
+
+    return (
+        <>
+        <DatGui data={data} onUpdate={updated => setData(updated)}>
             <DatSelect path="animation" options={animations} />
         </DatGui>
 
@@ -50,14 +71,14 @@ function ModelViewer({ modelUri }: Props) {
             }}
         >
             <OrbitControls target={[0, 200, 0]} />
-            <primitive object={model} />
+            <Model model={model} animation={data.animation} />
         </Canvas>
-    </>
+        </>
     )
 }
 
 export default function ModelEditor() {
-    const [ modelUri, setModelUri ] = React.useState('HUNTDAT/HUNTER1.CAR');
+    const [ modelUri, setModelUri ] = React.useState('CAR~HUNTDAT/HUNTER1.CAR');
     
     function dragOver(ev: React.DragEvent) {
         ev.preventDefault();
@@ -66,9 +87,15 @@ export default function ModelEditor() {
     function drop(ev: React.DragEvent) {
         ev.preventDefault();
         if (ev.dataTransfer.files?.length) {
-            const mapName = ev.dataTransfer.files[0].name;
+            const { name } = ev.dataTransfer.files[0];
+            let type;
+            if (name.toLowerCase().endsWith('.3df')) {
+                type = '3DF';
+            } else if (name.toLowerCase().endsWith('.car')) {
+                type = 'CAR';
+            }
             const url = URL.createObjectURL(ev.dataTransfer.files[0]);
-            setModelUri(url);
+            setModelUri(`${type}~${url}`);
         }
     }
 

@@ -1,0 +1,16 @@
+{
+    "extends": "react-app",
+    "overrides": [
+        {
+            "files": [
+                "src/kaitai/*.js"
+            ],
+            "rules": {
+                "eqeqeq": "off",
+                "no-redeclare": "off",
+                "default-case": "off",
+                "no-unused-vars": "off"
+            }
+        }
+    ]
+}

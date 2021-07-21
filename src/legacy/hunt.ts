@@ -56,8 +56,8 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         // C1: waterMap has water "floor" heights, while heightmap has water "level" heights
         // C2: heightMap has water "floor" heights, waterMap contains indices into water table
         //     specifying water levels.
-        const hmap = map.version == 1 ? 'waterMap' : 'heightMap';
-        const compensation = map.version == 1 ? 48 : 0;
+        const hmap = map.version === 1 ? 'waterMap' : 'heightMap';
+        const compensation = map.version === 1 ? 48 : 0;
 
         if (x < 0) x = 0;
         if (z < 0) z = 0;

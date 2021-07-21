@@ -53,8 +53,7 @@ seq:
     repeat-expr: sound_effect_count
   - id: anim_sound_map
     type: s4
-    repeat: expr
-    repeat-expr: 64
+    repeat: eos
     doc: mapping of animation (index) to sound (value)
 instances:
   texture_width:
