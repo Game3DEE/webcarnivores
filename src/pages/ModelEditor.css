@@ -1,0 +1,13 @@
+.modelContainer {
+    background: #959595;
+    padding: 0px;
+    margin: 0px;
+    width: 100%;
+    height: 100%;
+}
+
+.canvasStyle {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}

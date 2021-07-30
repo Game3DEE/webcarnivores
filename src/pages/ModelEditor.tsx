@@ -3,6 +3,8 @@ import { OrbitControls, useAnimations } from '@react-three/drei';
 import { Canvas, useLoader } from '@react-three/fiber';
 import DatGui, { DatSelect } from 'react-dat-gui';
 import { Loader, Mesh } from 'three';
+import './ModelEditor.css';
+import 'react-dat-gui/dist/index.css';
 
 import CARLoader from '../legacy/CARLoader';
 import C3DFLoader from '../legacy/C3DFLoader';
@@ -59,11 +61,8 @@ function ModelViewer({ modelUri }: Props) {
 
     return (
         <>
-        <DatGui data={data} onUpdate={updated => setData(updated)}>
-            <DatSelect path="animation" options={animations} />
-        </DatGui>
-
         <Canvas
+            className="canvasStyle"
             linear
             camera={{
                 position: [0,500,-500],
@@ -71,8 +70,13 @@ function ModelViewer({ modelUri }: Props) {
             }}
         >
             <OrbitControls target={[0, 200, 0]} />
+            <axesHelper args={[1000]} />
+            <gridHelper args={[1000, 1000/16]} />
             <Model model={model} animation={data.animation} />
         </Canvas>
+        <DatGui data={data} onUpdate={updated => setData(updated)}>
+            <DatSelect path="animation" options={animations} />
+        </DatGui>
         </>
     )
 }
@@ -100,7 +104,7 @@ export default function ModelEditor() {
     }
 
     return (
-        <div onDragOver={dragOver} onDrop={drop} style={{width: '100%', height: '100%', overflow: 'hidden'}}>
+        <div onDragOver={dragOver} onDrop={drop} className="modelContainer">
             <React.Suspense fallback={null}>
                 <ModelViewer modelUri={modelUri} />
             </React.Suspense>
