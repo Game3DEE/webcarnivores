@@ -35,9 +35,8 @@ export default class C3DFLoader extends Loader {
 
         let position: number[] = [];
         let uv: number[] = [];
-        faces!.forEach((f: any) => {
+        faces.forEach((f: any) => {
             let a = f.v1, b = f.v2, c = f.v3;
-    
             // *2 taken from LoadModel from original code
             position.push(vertices![a].x * 2, vertices![a].y * 2, vertices![a].z * 2);
             uv.push(f.tax / 256, f.tay / 256);
@@ -52,8 +51,8 @@ export default class C3DFLoader extends Loader {
         geo.setAttribute('uv', new Float32BufferAttribute(uv, 2));
         geo.computeVertexNormals();
 
-        const map = createTexture(c3dfObject.textureData, c3dfObject.textureWidth, c3dfObject.textureHeight);
-        const material = new MeshBasicMaterial({ map, transparent: true, alphaTest: 0.5, side: DoubleSide });
+        const map = createTexture(c3dfObject.textureData, c3dfObject.textureWidth, c3dfObject.textureHeight, true);
+        const material = new MeshBasicMaterial({ map, side: DoubleSide });
 
         return new Mesh(geo, material);
     }

@@ -6,6 +6,7 @@ meta:
   title: Generic geometry face (triangle) definition
   application: Carnivores 1, 2 and Ice Age
   endian: le
+  bit-endian: le
   license: CC0-1.0
 
 doc-ref: https://carnivores.fandom.com/wiki/3DF

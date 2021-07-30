@@ -38,7 +38,7 @@ var C3df = (function() {
     for (var i = 0; i < this.nodeCount; i++) {
       this.nodes[i] = new Node(this._io, this, this._root);
     }
-    this.textureData = this._io.readBytes(((this.textureWidth * this.textureHeight) * 2));
+    this.textureData = this._io.readBytes(this.textureSize);
   }
 
   var Node = C3df.Node = (function() {
