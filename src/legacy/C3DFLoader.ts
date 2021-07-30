@@ -52,7 +52,7 @@ export default class C3DFLoader extends Loader {
         geo.computeVertexNormals();
 
         const map = createTexture(c3dfObject.textureData, c3dfObject.textureWidth, c3dfObject.textureHeight, true);
-        const material = new MeshBasicMaterial({ map, side: DoubleSide });
+        const material = new MeshBasicMaterial({ map, side: DoubleSide, alphaTest: 0.5, transparent: true });
 
         return new Mesh(geo, material);
     }
