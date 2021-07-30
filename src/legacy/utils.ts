@@ -19,6 +19,5 @@ export function createTexture(texData: Uint8Array, width: number, height: number
         data, width, height,
         RGBAFormat, UnsignedShort5551Type,
     );
-    tex.needsUpdate = true;
     return tex;
   }

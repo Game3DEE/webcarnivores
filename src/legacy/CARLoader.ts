@@ -34,6 +34,8 @@ export default class CARLoader extends Loader {
         let position: number[] = [];
         let uv: number[] = [];
 
+        const { textureWidth: width, textureHeight: height } = car;
+
         const { faces, vertices } = car;
 
         for (let i = 0; i < frames.length; i++) {
@@ -58,9 +60,9 @@ export default class CARLoader extends Loader {
 
         faces!.forEach((f: any) => {
             let a = f.v1, b = f.v2, c = f.v3;
-            addVert(a, f.tax / 256, f.tay / 256);
-            addVert(b, f.tbx / 256, f.tby / 256);
-            addVert(c, f.tcx / 256, f.tcy / 256);
+            addVert(a, f.tax / width, f.tay / height);
+            addVert(b, f.tbx / width, f.tby / height);
+            addVert(c, f.tcx / width, f.tcy / height);
         });
       
         // Setup basic model geo data
