@@ -6,6 +6,7 @@ import Player from '../Player';
 import Sky from './Sky';
 import Scenery from './Scenery';
 import { Canvas } from '@react-three/fiber';
+import HUD from './HUD';
 
 interface Props {
     mapUrl: string;
@@ -41,6 +42,7 @@ function World({ mapUrl, rscUrl }: Props) {
                     <Terrain rsc={world.rsc} map={world.map} />
                     <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />
                     <Player landings={world.landings} getHeightAt={world.getHeightAt} />
+                    <HUD miniMap={world.miniMap} />
 
                 </React.Suspense>
 
@@ -54,3 +56,4 @@ function World({ mapUrl, rscUrl }: Props) {
 */
 
 export default World;
+//

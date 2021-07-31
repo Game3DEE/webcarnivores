@@ -5,11 +5,15 @@
 // where necessary.
 import KaitaiStream from 'kaitai-struct/KaitaiStream';
 import {
+    DataTexture,
+    RGBAFormat,
+    UnsignedShort5551Type,
     Vector3,
 } from 'three';
 
 import MAP from '../kaitai/Map';
 import RSC from '../kaitai/Rsc';
+import { getUS5551 } from './utils';
 
 function getLandings(map: any) {
 
@@ -47,7 +51,46 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
     const rsc = new RSC(new KaitaiStream(rscBuffer), undefined, undefined, map.version);
     console.log(rsc, map)
 
+/* WIP
+    if (map.version == 1) {
+        // Carnivores (1) map, fixup water related map data
+        // XXX TODO create C2-style water table & map!
+        const size = map.mapSize * map.mapSize;
+        for (let i = 0; i < size; i++) {
+            if (map.flagsMap![i].fWater) {
+                // Set heightmap to waterfloor level
+                //map.heightMap![i] = map.waterMap![i];
+                // Map POOL texture (0) to SAND texture (1)
+                if (map.textureMap1![i] == 0) {
+                    map.textureMap1![i] = 1;
+                }
+                if (map.textureMap2![i] == 0) {
+                    map.textureMap2![i] = 1;
+                }
+            }
+        }
+    }
+    */
+
     const landings = getLandings(map);
+
+    const miniMapSize = map.mapSize / 2;
+    const minimapData = new Uint16Array(miniMapSize * miniMapSize);
+    let off = 0;
+    let tx, ty;
+    for (let y = 0; y < miniMapSize; y++) {
+        for (let x = 0; x < miniMapSize; x++) {
+            let tidx = map.textureMap1![(y * 2 * map.mapSize) + x * 2];
+            // Use more detail for water tiles
+            tx = tidx === 0 ? (x & 31) * 4 : (x & 15) * 8;
+            ty = tidx === 0 ? (y & 31) * 4 : (y & 15) * 8;
+            const tex = rsc.textures![tidx];
+            minimapData[off++] = getUS5551(tx, ty, tex.data, tex.width, false);
+        }
+    }
+
+    const miniMap = new DataTexture(minimapData, miniMapSize, miniMapSize, RGBAFormat, UnsignedShort5551Type);
+    miniMap.flipY = false;
 
     function getLandH(x: number, z: number) {
         const { tileSize, mapSize } = map;
@@ -126,6 +169,7 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         map,
         rsc,
         landings,
+        miniMap,
         getHeightAt: getLandQHNoObj,
         getLandQHNoObj,
         getLandH,
