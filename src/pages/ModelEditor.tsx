@@ -69,7 +69,7 @@ function ModelViewer({ modelUri }: Props) {
                 far: 10000,
             }}
         >
-            <OrbitControls target={[0, 200, 0]} />
+            <OrbitControls target={[0, 0, 0]} />
             <axesHelper args={[1000]} />
             <gridHelper args={[1000, 1000/16]} />
             <Model model={model} animation={data.animation} />
