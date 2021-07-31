@@ -92,6 +92,21 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         return  (h / 256 / 256 - compensation) * map.yScale;
     }
 
+    function getObjectH(x: number, y: number, R: number) {
+        x = (x * map.tileSize) + map.tileSize / 2;
+        y = (y * map.tileSize) + map.tileSize / 2;
+
+        let hr, h;
+        hr = getLandH(x,   y  );
+        h  = getLandH(x+R, y  ); if (h < hr) hr = h;
+        h  = getLandH(x-R, y  ); if (h < hr) hr = h;
+        h  = getLandH(x,   y+R); if (h < hr) hr = h;
+        h  = getLandH(x,   y-R); if (h < hr) hr = h;
+        hr += 15;
+
+        return  Math.floor(hr / map.yScale + 48);
+    }
+
     function getLandQHNoObj(x: number, z: number) {  
         return Math.max(
             getLandH(x, z),
@@ -112,5 +127,8 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         rsc,
         landings,
         getHeightAt: getLandQHNoObj,
+        getLandQHNoObj,
+        getLandH,
+        getObjectH,
     };
 }

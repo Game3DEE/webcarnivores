@@ -39,7 +39,7 @@ function World({ mapUrl, rscUrl }: Props) {
 
                     <Sky rsc={world.rsc} map={world.map} />
                     <Terrain rsc={world.rsc} map={world.map} />
-                    <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getHeightAt} />
+                    <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />
                     <Player landings={world.landings} getHeightAt={world.getHeightAt} />
 
                 </React.Suspense>
