@@ -13,19 +13,16 @@ const controls = {
 
 function handleKeys(event: KeyboardEvent) {
     const down = event.type === 'keydown';
-    // ALT-W/S/A/D seems to trigger in-browser functionality
-    // when the browser changes focus, we loose keyup events, and
-    // the player keeps moving.
-    // XXX is this better handled by calling event.preventDefault()?
-    if (event.altKey) return;
     switch(event.key.toLowerCase()) {
         case 'w': controls.forward = down; break;
         case 's': controls.backward = down; break;
         case 'a': controls.left = down; break;
         case 'd': controls.right = down; break;
         case 'shift': controls.run = down; break;
-        default: console.log(event.key, down);
+        default: console.log(event.key, down); return;
     }
+
+    event.preventDefault();
 }
 
 interface Props {
