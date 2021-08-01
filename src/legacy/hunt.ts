@@ -90,7 +90,7 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
     }
 
     const miniMap = new DataTexture(minimapData, miniMapSize, miniMapSize, RGBAFormat, UnsignedShort5551Type);
-    miniMap.flipY = false;
+    miniMap.flipY = true; // keep (0,0) in the top left, game expects it
 
     function getLandH(x: number, z: number) {
         const { tileSize, mapSize } = map;
