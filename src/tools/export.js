@@ -14,10 +14,12 @@ const baseName = path.basename(mapFname, '.MAP');
 const rscFname = mapFname.replace(/MAP$/, 'RSC');
 const prjFname = mapFname.replace(/MAP$/, 'PRJ');
 
-const filenames = JSON.parse(fs.readFileSync(path.join(__dirname, 'filenames.json'), 'utf8'));
 
 const map = new MAP(new KaitaiStream(fs.readFileSync(mapFname)));
 const rsc = new RSC(new KaitaiStream(fs.readFileSync(rscFname)), undefined, undefined, map.version);
+
+/*
+const filenames = JSON.parse(fs.readFileSync(path.join(__dirname, 'filenames.json'), 'utf8'));
 const prj = fs.readFileSync(prjFname, 'utf8');
 
 const textureNames = [];
@@ -73,7 +75,9 @@ function parsePRJ() {
 
     //console.log(filenames);
 }
-
+parsePRJ();
+fs.writeFileSync(path.join(__dirname, 'filenames.json'), JSON.stringify(filenames, undefined, 2));
+*/
 function exportTexture(texData, texName, width, height) {
     const png = new PNG({
         width,
@@ -83,7 +87,7 @@ function exportTexture(texData, texName, width, height) {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const i = y * width + x;
-            const pixel = texData[i];
+            const pixel = texData[i*2+1] << 8 | texData[i*2];
             let r = ((pixel >> 10) & 0x1f) << 3;
             let g = ((pixel >>  5) & 0x1f) << 3;
             let b = ((pixel >>  0) & 0x1f) << 3;
@@ -115,7 +119,38 @@ function exportMap(map, pngName, mapDim) {
     }
     fs.writeFileSync(pngName, PNG.sync.write(png));
 }
-/*
+
+function exportMinimap(filename) {
+    const miniMapSize = map.mapSize / 2;
+    const png = new PNG({
+        width: miniMapSize,
+        height: miniMapSize,
+    });
+    let off = 0;
+    let tx, ty;
+    for (let y = 0; y < miniMapSize; y++) {
+        for (let x = 0; x < miniMapSize; x++) {
+            let tidx = map.textureMap1[(y * 2 * map.mapSize) + x * 2];
+            // Use more detail for water tiles
+            tx = tidx === 0 ? (x & 31) * 4 : (x & 15) * 8;
+            ty = tidx === 0 ? (y & 31) * 4 : (y & 15) * 8;
+            const tex = rsc.textures[tidx];
+
+            const i = ty * tex.width + tx;
+            const pixel = tex.data[i*2+1] << 8 | tex.data[i*2];
+            let r = ((pixel >> 10) & 0x1f) << 3;
+            let g = ((pixel >>  5) & 0x1f) << 3;
+            let b = ((pixel >>  0) & 0x1f) << 3;
+            png.data[off++] = r;
+            png.data[off++] = g;
+            png.data[off++] = b;
+            png.data[off++] = 255;
+        }
+    }
+    fs.writeFileSync(filename, PNG.sync.write(png));
+}
+
+exportMinimap(`${baseName}-minimap.png`);
 exportMap(map.heightMap, `${baseName}-hm.png`, map.mapSize);
 exportMap(map.waterMap, `${baseName}-wm.png`, map.mapSize);
 exportMap(map.dayLightMap, `${baseName}-day-lm.png`, map.mapSize);
@@ -130,7 +165,3 @@ if (map.version == 2) {
     exportTexture(rsc.dawnSkyTexture, `${baseName}-dawn-sky.png`, 256, 256);
     exportTexture(rsc.nightSkyTexture, `${baseName}-night-sky.png`, 256, 256);
 }
-*/
-
-parsePRJ();
-fs.writeFileSync(path.join(__dirname, 'filenames.json'), JSON.stringify(filenames, undefined, 2));
