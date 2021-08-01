@@ -25,8 +25,8 @@ function HUD({ miniMap }: Props) {
         if (virtualCam.current) {
             camera.getWorldDirection(dir);
             sph.setFromVector3(dir);
-            compass.rotation.y = sph.theta;
-            wind.rotation.y = sph.theta;
+            compass.rotation.y = sph.theta + Math.PI;
+            wind.rotation.y = sph.theta + Math.PI;
             gl.autoClear = true
             gl.render(scene, camera)
             gl.autoClear = false
