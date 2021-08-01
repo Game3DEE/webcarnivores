@@ -5,8 +5,8 @@ import World from '../components/World'
 
 export default function Home() {
     const [ world, setWorld ] = React.useState({
-        map: 'HUNTDAT/AREAS/AREA1.MAP',
-        rsc: 'HUNTDAT/AREAS/AREA1.RSC',
+        map: 'HUNTDAT/AREAS2/AREA2.MAP',
+        rsc: 'HUNTDAT/AREAS2/AREA2.RSC',
     });
 
     function dragOver(ev: React.DragEvent) {
