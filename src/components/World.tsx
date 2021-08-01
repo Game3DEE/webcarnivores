@@ -11,9 +11,11 @@ import HUD from './HUD';
 interface Props {
     mapUrl: string;
     rscUrl: string;
+    enableHUD?: boolean;
+    enableScenery?: boolean;
 }
 
-function World({ mapUrl, rscUrl }: Props) {
+function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true }: Props) {
     const [world, setWorld] = React.useState<any>();
 
     React.useEffect(() => {
@@ -40,9 +42,9 @@ function World({ mapUrl, rscUrl }: Props) {
 
                     <Sky rsc={world.rsc} map={world.map} />
                     <Terrain rsc={world.rsc} map={world.map} />
-                    <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />
+                    {enableScenery && <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />}
                     <Player landings={world.landings} getHeightAt={world.getHeightAt} />
-                    <HUD miniMap={world.miniMap} />
+                    {enableHUD && <HUD miniMap={world.miniMap} />}
 
                 </React.Suspense>
 
