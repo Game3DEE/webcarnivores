@@ -27,14 +27,14 @@ function Scenery({ map, rsc, getHeightAt }: Props) {
                     let height = 0;
                     const model = rsc.models[obj];
                     if (model.fPlaceWater) {
-                        console.log('WATER', x, y, obj);
+                        //console.log('WATER', x, y, obj);
                     }
                     else if (model.fPlaceGround) {
                         //console.log('GROUND', x, y, obj);
                         height = getHeightAt(x, y, model.grRad);
                     }
                     else if (model.fPlaceUser) {
-                        console.log('USER', x, y, obj);
+                        //console.log('USER', x, y, obj);
                         height = objectHeightMap[y * mapSize + x] + 48;
                     } else {
                         // unexpected placement!

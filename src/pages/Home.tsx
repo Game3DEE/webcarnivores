@@ -1,18 +1,30 @@
 import React from 'react'
-import DatGui, { DatBoolean } from 'react-dat-gui';
+import DatGui, { DatBoolean, DatSelect } from 'react-dat-gui';
 import 'react-dat-gui/dist/index.css';
 
 import './Home.css'
 import World from '../components/World'
 
-export default function Home() {
-    const [ world, setWorld ] = React.useState({
+const levelNames = [
+    'Basmachee Rocks',
+    'Fort Ciskin',
+];
+
+const levelSources = [{
+        map: 'HUNTDAT/AREAS/AREA1.MAP',
+        rsc: 'HUNTDAT/AREAS/AREA1.RSC',
+    }, {
         map: 'HUNTDAT/AREAS2/AREA2.MAP',
         rsc: 'HUNTDAT/AREAS2/AREA2.RSC',
-    });
+    }
+];
+
+export default function Home() {
+    const [ world, setWorld ] = React.useState(levelSources[0]);
     const [ data, setData ] = React.useState({
         enableScenery: true,
         enableHUD: false,
+        levelName: levelNames[0],
     });
 
     function dragOver(ev: React.DragEvent) {
@@ -51,9 +63,19 @@ export default function Home() {
                 enableScenery={data.enableScenery}
             />
 
-            <DatGui data={data} onUpdate={updated => setData(updated)}>
+            <DatGui data={data} onUpdate={updated => {
+                // Detect area change
+                if (data.levelName !== updated.levelName) {
+                    const idx = levelNames.indexOf(updated.levelName);
+                    if (idx !== -1) {
+                        setWorld(levelSources[idx]);
+                    }
+                }
+                setData(updated)
+            }}>
                 <DatBoolean path='enableScenery' label="Objects" />
                 <DatBoolean path='enableHUD' label="HUD" />
+                <DatSelect path='levelName' label="Area" options={levelNames} />
             </DatGui>
 
         </div>
