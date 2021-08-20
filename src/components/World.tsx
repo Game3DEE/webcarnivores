@@ -13,9 +13,10 @@ interface Props {
     rscUrl: string;
     enableHUD?: boolean;
     enableScenery?: boolean;
+    clipFar?: number;
 }
 
-function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true }: Props) {
+function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true, clipFar = 1000000 }: Props) {
     const [world, setWorld] = React.useState<any>();
 
     React.useEffect(() => {
@@ -32,7 +33,7 @@ function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true }: Props
                 camera={{
                     fov: 30,
                     near: 1,
-                    far: 1000000,
+                    far: clipFar,
                 }}
             >
                 <Stats />
@@ -40,7 +41,7 @@ function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true }: Props
 
                 <React.Suspense fallback={<Html center>Loading, please wait</Html>}>
 
-                    <Sky rsc={world.rsc} map={world.map} />
+                    <Sky clipFar={clipFar} rsc={world.rsc} map={world.map} />
                     <Terrain rsc={world.rsc} map={world.map} />
                     {enableScenery && <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />}
                     <Player landings={world.landings} getHeightAt={world.getHeightAt} />
@@ -53,9 +54,9 @@ function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true }: Props
         </>
     ) : <></>
 }
-/*
-    <fog near={10*256} far={140*256} attach="fog" />
-*/
 
 export default World;
-//
+
+/*
+                <fog near={clipFar-(clipFar / 10)} far={clipFar} attach="fog" />
+*/

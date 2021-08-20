@@ -86,7 +86,6 @@ export default class CARLoader extends Loader {
         let mat = new MeshBasicMaterial({
             map: createTexture(car.textureData, car.textureWidth, car.textureHeight, false),
             side: DoubleSide,
-            morphTargets: true,
         })
 
         let mesh = new Mesh(geo, mat);

@@ -25,6 +25,7 @@ export default function Home() {
         enableScenery: true,
         enableHUD: false,
         levelName: levelNames[0],
+        renderDistance: 16384,
     });
 
     function dragOver(ev: React.DragEvent) {
@@ -61,6 +62,7 @@ export default function Home() {
                 rscUrl={world.rsc}
                 enableHUD={data.enableHUD}
                 enableScenery={data.enableScenery}
+                clipFar={data.renderDistance}
             />
 
             <DatGui data={data} onUpdate={updated => {
@@ -81,3 +83,7 @@ export default function Home() {
         </div>
     )
 }
+
+/*
+                <DatNumber path='renderDistance' label="RenderDist" step={256} min={256} max={1000000} />
+*/
