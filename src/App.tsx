@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 
 import Home from './pages/Home';
+import Main from './pages/Main';
 import MapEditor from './pages/MapEditor';
 import ModelEditor from './pages/ModelEditor';
 
@@ -16,6 +17,9 @@ export default function App() {
       <Switch>
         <Route exact path="/">
           <Home />
+        </Route>
+        <Route path="/main">
+          <Main />
         </Route>
         <Route path="/edit-map">
           <MapEditor />
