@@ -72,6 +72,62 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
     }
     */
 
+    const modelBounds: any[] = [];
+
+    rsc.models?.forEach(m => {
+        let modelBound = [];
+        for (let o = 0; o < 8; o++) {
+          let x1 = 0, x2 = 0, y1 = 0, y2 = 0, z1 = 0, z2 = 0;
+          let first = true;
+     
+          for (let i = 0; i < m.model.vertices.length; i++) {
+            const p = m.model.vertices[i];
+
+            if (p.hide) continue;
+            if (p.owner !== o) continue;
+      
+            if (first) {
+              x1 = p.x - 1;
+              x2 = p.x + 1;
+              y1 = p.y - 1;
+              y2 = p.y + 1;
+              z1 = p.z - 1;
+              z2 = p.z + 1;
+              first = false;
+            }
+      
+            if (p.x < x1) x1 = p.x;
+            if (p.x > x2) x2 = p.x;
+      
+            if (p.y < y1) y1 = p.y;
+            if (p.y > y2) y2 = p.y;
+      
+            if (p.z < z1) z1 = p.z;
+            if (p.z > z2) z2 = p.z;
+          }
+      
+          if (first) {
+              modelBound.push({ a: -1 });
+              continue;
+          }
+      
+          x1 -= 72;
+          x2 += 72;
+          z1 -= 72;
+          z2 += 72;
+      
+          modelBound.push({
+              y1, y2,
+              cx: (x1 + x2) / 2,
+              cy: (z1 + z2) / 2,
+              a: (x2 - x1) / 2,
+              b: (z2 - z1) / 2,
+          })      
+        }
+
+        modelBounds.push(modelBound);
+    })
+
     const landings = getLandings(map);
 
     const miniMapSize = map.mapSize / 2;
@@ -165,14 +221,225 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
         );
     }
 
+    function getLandOH(x: number, z: number) {
+        return map.objectHeightMap[z * map.mapSize + x] * map.yScale;
+    }
+
+    function pointOnBound(px: number, py: number, cx: number, cy: number, oy: number, bound: any[], angle: number) {
+      px -= cx;
+      py -= cy;
+    
+      let ca = Math.cos(angle * Math.PI / 2);
+      let sa = Math.sin(angle * Math.PI / 2);
+    
+      let _on = false;
+      let H = -1000;
+    
+      for (let o=0; o < 8; o++) {
+        if (bound[o].a < 0) continue;
+        if (bound[o].y2 + oy > PlayerY + 128) continue;
+    
+        let a,b;
+        let ccx = bound[o].cx * ca + bound[o].cy*sa;
+        let ccy = bound[o].cy * ca - bound[o].cx*sa;
+    
+        if (angle & 1) {
+          a = bound[o].b;
+          b = bound[o].a;
+        } else {
+          a = bound[o].a;
+          b = bound[o].b;
+        }
+    
+        if (Math.abs(px - ccx) < a && Math.abs(py - ccy) < b) {
+          _on = true;
+          if (H < bound[o].y2) H = bound[o].y2;
+        }
+      }
+    
+      return _on ? H : Number.MIN_SAFE_INTEGER;
+    }
+    
+
+    function GetLandQH(CameraX: number, CameraZ: number) {    
+      let h = getLandH(CameraX, CameraZ);
+      let hh = getLandH(CameraX - 90, CameraZ - 90);
+      if (hh > h) h = hh;
+      hh = getLandH(CameraX + 90, CameraZ - 90);
+      if (hh > h) h = hh;
+      hh = getLandH(CameraX - 90, CameraZ + 90);
+      if (hh > h) h = hh;
+      hh = getLandH(CameraX + 90, CameraZ + 90);
+      if (hh > h) h = hh;
+    
+      hh = getLandH(CameraX + 128, CameraZ);
+      if (hh > h) h=hh;
+      hh = getLandH(CameraX - 128, CameraZ);
+      if (hh > h) h=hh;
+      hh = getLandH(CameraX, CameraZ + 128);
+      if (hh > h) h=hh;
+      hh = getLandH(CameraX, CameraZ - 128);
+      if (hh > h) h=hh;
+    
+      let ccx = Math.floor(CameraX / 256);
+      let ccz = Math.floor(CameraZ / 256);
+    
+      for (let z=-4; z<=4; z++) {
+        for (let x=-4; x<=4; x++) {
+            let ob = map.objectMap[(ccz + z) * map.mapSize + ccx + x];
+          if (ob < 254) {
+            let CR = rsc.models![ob].radius - 1;
+    
+            let oz = (ccz+z) * 256 + 128;
+            let ox = (ccx+x) * 256 + 128;
+    
+            let LandY = getLandOH(ccx+x, ccz+z);
+    
+            if (!(map.objectMap[ob].fBound)) {
+              if (map.objectMap[ob].yHi + LandY < h) continue;
+              if (map.objectMap[ob].yHi + LandY > PlayerY+128) continue;
+              //if (MObjects[ob].info.YLo + LandY > PlayerY+256) continue;
+            }
+    
+            let r = CR+1;
+    
+            if (map.objectMap[ob].fBound)
+            {
+              let oh = 0;
+              if ((oh=pointOnBound(CameraX, CameraZ, ox, oz, LandY, modelBounds[ob], map.flagsMap![(ccz + z) * map.mapSize + ccx + x].fModelDirection)) !== Number.MIN_SAFE_INTEGER )
+                if (h < LandY + oh) h = LandY + oh;
+            }
+            else
+            {
+              if (map.objectMap[ob].fCircle)
+                r = Math.sqrt( (ox-CameraX)*(ox-CameraX) + (oz-CameraZ)*(oz-CameraZ) );
+              else
+                r = Math.max( Math.abs(ox-CameraX), Math.abs(oz-CameraZ) );
+    
+              if (r<CR) h = map.objectMap[ob].yHi + LandY;
+            }
+    
+          }
+        }
+    }
+
+      return h;
+    }
+    
+
+    function checkBoundCollision(p: Vector3, cx: number, cy: number, oy: number, model: number, angle: number) {
+        let ppx = p.x - cx;
+        let ppy = p.y - cy;
+
+        let ca = Math.cos(angle * Math.PI / 2);
+        let sa = Math.sin(angle * Math.PI / 2);
+        let w, h;
+
+        const bound = modelBounds[model];
+
+        for (let o = 0; o < 8; o++) {
+            if (bound[o].a < 0) continue;
+
+            if (bound[o].y2 + oy < p.y + 128) continue;
+            if (bound[o].y1 + oy > p.y + 256) continue;
+
+            let ccx = bound[o].cx * ca + bound[o].cy * sa;
+            let ccy = bound[o].cy * ca - bound[o].cx * sa;
+
+            if (angle & 1) {
+                w = bound[o].b +2;
+                h = bound[o].a +2;
+            } else {
+                w = bound[o].a +2;
+                h = bound[o].b +2;
+            }
+
+            let dw = Math.abs(ppx - ccx) - w;
+            let dh = Math.abs(ppy - ccy) - h;
+
+            if ( (dw > 0) || (dh > 0) ) continue;
+
+            if (dw > dh) {
+                p.x = cx + ccx + w * Math.sign(ppx - ccx);
+            } else {
+                p.y = cy + ccy + h * Math.sign(ppy - ccy);
+            }
+        }
+    }
+
+    function checkCollision(v: Vector3) {
+        if (v.x < 36 * 256) v.x = 36 * 256;
+        if (v.z < 36 * 256) v.z = 36 * 256;
+        if (v.x > 980 * 256) v.x = 980 * 256;
+        if (v.z > 980 * 256) v.z = 980 * 256;
+        let ccx = Math.floor(v.x / 256);
+        let ccz = Math.floor(v.z / 256);
+
+        if (!rsc.models) return;
+
+        for (let z = -4; z <= 4; z++) {
+            for (let x = -4; x <= 4; x++) {
+                const ob = map.objectMap[(ccz + z) * map.mapSize + ccx + x];
+                if (ob < 254) {
+                    const model = rsc.models[ob];
+                    let CR = model.radius * 2; // TODO: do on load
+    
+                    let oz = (ccz + z) * 256 + 128;
+                    let ox = (ccx + x) * 256 + 128;
+    
+                    let LandY = getLandOH(ccx + x, ccz + z);
+    
+                    if (!model.fBound) {
+                        if (model.yHi * 2 + LandY < v.y + 128) continue;
+                        if (model.yLo * 2 + LandY > v.y + 256) continue;
+                    }
+    
+                    if (model.fBound) {
+                        checkBoundCollision(v, ox, oz, LandY, ob, map.flagsMap![(ccz + z) * map.mapSize + ccx + x].fModelDirection);
+                    } else if (model.fCircle) {
+                        let r = Math.sqrt((ox - v.x) * (ox - v.x) + (oz - v.z) * (oz - v.z));
+                        if (r < CR) {
+                            v.x = v.x - (ox - v.x) * (CR - r) / r;
+                            v.z = v.z - (oz - v.z) * (CR - r) / r;
+                        }
+                    } else {
+                        let r = Math.max(Math.abs(ox - v.x), Math.abs(oz - v.z));
+                        if (r < CR) {
+                            if (Math.abs(ox - v.x) > Math.abs(oz - v.z))
+                                v.x = v.x - (ox - v.x) * (CR - r) / r;
+                            else
+                                v.z = v.z - (oz - v.z) * (CR - r) / r;
+                        }
+                    }
+                }
+            }
+        }
+    
+        /* TROPHY MODE ONLY
+        if (!TrophyMode) return;
+    
+        for (let c = 0; c < ChCount; c++) {
+            let px = Characters[c].pos.x;
+            let pz = Characters[c].pos.z;
+            let CR = DinoInfo[Characters[c].CType].Radius;
+            let r = Math.sqrt((px - cx) * (px - cx) + (pz - cz) * (pz - cz));
+            if (r < CR) {
+                cx = cx - (px - cx) * (CR - r) / r;
+                cz = cz - (pz - cz) * (CR - r) / r;
+            }
+        }
+        */
+    }
+
     return {
         map,
         rsc,
         landings,
         miniMap,
-        getHeightAt: getLandQHNoObj,
+        checkCollision,
         getLandQHNoObj,
         getLandH,
         getObjectH,
+        getLandOH,
     };
 }

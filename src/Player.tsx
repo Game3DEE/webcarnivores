@@ -26,11 +26,16 @@ function handleKeys(event: KeyboardEvent) {
 }
 
 interface Props {
-    getHeightAt: (x: number, z: number) => number;
+    getLandQHNoObj: (x: number, z: number) => number;
+    checkCollision: (v: Vector3) => void;
     landings: Vector3[];
 }
 
-export default function Player({ getHeightAt, landings }: Props) {
+export default function Player({ 
+    checkCollision,
+    getLandQHNoObj,
+    landings
+}: Props) {
     React.useEffect(() => {
         document.addEventListener('keydown', handleKeys);
         document.addEventListener('keyup', handleKeys);
@@ -40,61 +45,175 @@ export default function Player({ getHeightAt, landings }: Props) {
         }
     })
 
-    const velocity = new Vector3();
-    const direction = new Vector3();
-    const _vector = new Vector3();
-
     const initPos = landings[Math.floor(landings.length * Math.random())];
     let initial = true;
 
-    const velocityDrag = 10.0;
-    const mass = 100.0;
-    const gravity = 9.8;
-    const speed = 7000.0;
     const eyeHeight = 220;
     const clock  = new Clock();
 
-    useFrame(({ camera }) => {
-        let delta = clock.getDelta();
+    let vspeed = 0;
+    let sspeed = 0;
 
+    const _vector = new Vector3();
+    const player = new Vector3();
+
+    function processSlide() {
+        let ch = getLandQHNoObj(player.x, player.z);
+        let mh = ch;
+        let sd = 0;
+    
+        let chh = getLandQHNoObj(player.x - 16, player.z);
+        if (chh < mh) {
+            mh = chh;
+            sd = 1;
+        }
+        chh = getLandQHNoObj(player.x + 16, player.z);
+        if (chh < mh) {
+            mh = chh;
+            sd = 2;
+        }
+        chh = getLandQHNoObj(player.x, player.z - 16);
+        if (chh < mh) {
+            mh = chh;
+            sd = 3;
+        }
+        chh = getLandQHNoObj(player.x, player.z + 16);
+        if (chh < mh) {
+            mh = chh;
+            sd = 4;
+        }
+    
+        chh = getLandQHNoObj(player.x - 12, player.z - 12);
+        if (chh < mh) {
+            mh = chh;
+            sd = 5;
+        }
+        chh = getLandQHNoObj(player.x + 12, player.z - 12);
+        if (chh < mh) {
+            mh = chh;
+            sd = 6;
+        }
+        chh = getLandQHNoObj(player.x - 12, player.z + 12);
+        if (chh < mh) {
+            mh = chh;
+            sd = 7;
+        }
+        chh = getLandQHNoObj(player.x + 12, player.z + 12);
+        if (chh < mh) {
+            mh = chh;
+            sd = 8;
+        }
+    
+        if (true /* !NOCLIP */)
+            if (mh < ch - 16) {
+                let delta = (ch - mh) / 4;
+                if (sd == 1) {
+                    player.x -= delta;
+                }
+                if (sd == 2) {
+                    player.x += delta;
+                }
+                if (sd == 3) {
+                    player.z -= delta;
+                }
+                if (sd == 4) {
+                    player.z += delta;
+                }
+    
+                delta *= 0.7;
+                if (sd == 5) {
+                    player.x -= delta;
+                    player.z -= delta;
+                }
+                if (sd == 6) {
+                    player.x += delta;
+                    player.z -= delta;
+                }
+                if (sd == 7) {
+                    player.x -= delta;
+                    player.z += delta;
+                }
+                if (sd == 8) {
+                    player.x += delta;
+                    player.z += delta;
+                }
+            }
+    }
+
+    useFrame(({ camera }) => {
+        const delta = clock.getDelta(); // DeltaT
+        const deltaMs = delta * 1000; // TimeDt
+
+        // Set initial position
         if (initial) {
-            camera.position.copy(initPos);
+            player.copy(initPos);
             initial = false;
         }
 
-        velocity.x -= velocity.x * velocityDrag * delta;
-        velocity.z -= velocity.z * velocityDrag * delta;
-
-        velocity.y -= gravity * mass * delta;
-
-        direction.z = Number( controls.forward ) - Number( controls.backward );
-        direction.x = Number( controls.right ) - Number( controls.left );
-        direction.normalize(); // this ensures consistent movements in all directions
-
-        const spd = speed * (controls.run ? 4 : 1);
-        if ( controls.forward || controls.backward ) velocity.z -= direction.z * spd * delta;
-        if ( controls.left || controls.right ) velocity.x -= direction.x * spd * delta;
-
-        // move right
-        _vector.setFromMatrixColumn( camera.matrix, 0 );
-        camera.position.addScaledVector( _vector, - velocity.x * delta );
-
-        // move forward
-        _vector.setFromMatrixColumn( camera.matrix, 0 );
-        _vector.crossVectors( camera.up, _vector );
-        camera.position.addScaledVector( _vector, -velocity.z * delta );
-
-        // move down
-        camera.position.y += ( velocity.y * delta );
-
-        const height = getHeightAt(camera.position.x, camera.position.z);
-        if ( camera.position.y < height + eyeHeight ) {
-
-            velocity.y = 0;
-            camera.position.y = height + eyeHeight;
-
-            //onGround = true;
+        // Handle deacceleration
+        if (!controls.forward && !controls.backward) {
+            vspeed = (vspeed > 0) ? 
+                Math.max(0, vspeed - delta * 2) :
+                Math.min(0, vspeed + delta * 2);
         }
+
+        if (!controls.left && !controls.right) {
+            sspeed = (sspeed > 0) ?
+                Math.max(0, sspeed - delta * 2) :
+                Math.min(0, sspeed + delta * 2);
+        }
+
+        // Handle acceleration
+        if (controls.forward) {
+            vspeed += (vspeed > 0) ? delta : delta * 4;
+        }
+
+        if (controls.backward) {
+            vspeed -= (vspeed < 0) ? delta : delta * 4;
+        }
+
+        if (controls.right) {
+            sspeed += (sspeed > 0) ? delta : delta * 4;
+        }
+
+        if (controls.left) {
+            sspeed -= (sspeed > 0) ? delta : delta * 4;
+        }
+
+        const maxSpeed = controls.run ? 0.7 : 0.3; // 0.25 = swim speed
+        if (vspeed > maxSpeed) vspeed = maxSpeed;
+        if (vspeed < -maxSpeed) vspeed = -maxSpeed;
+        if (sspeed > maxSpeed) sspeed = maxSpeed;
+        if (sspeed < -maxSpeed) sspeed = -maxSpeed;
+
+        let mvi = 1 + deltaMs / 16;
+
+        for (let mvc = 0; mvc < mvi; mvc++) {
+            // move right
+            _vector.setFromMatrixColumn( camera.matrix, 0 );
+            player.addScaledVector( _vector, (sspeed * deltaMs)/mvi );
+
+            // move forward
+            _vector.setFromMatrixColumn( camera.matrix, 0 );
+            _vector.crossVectors( camera.up, _vector );
+            player.addScaledVector( _vector, (vspeed * deltaMs)/mvi );
+
+            // TODO check collision
+            checkCollision(player);
+
+            if (player.y <= getLandQHNoObj(player.x, player.z) + 16) {
+                processSlide();
+                processSlide();
+            }    
+        }
+
+        if (player.y <= getLandQHNoObj(player.x, player.z) + 16) {
+            processSlide();
+            processSlide();
+        }
+
+        camera.position.copy(player);
+        camera.position.y += eyeHeight;
     })
 
     return null

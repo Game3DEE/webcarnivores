@@ -44,7 +44,11 @@ function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true, clipFar
                     <Sky clipFar={clipFar} rsc={world.rsc} map={world.map} />
                     <Terrain rsc={world.rsc} map={world.map} />
                     {enableScenery && <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />}
-                    <Player landings={world.landings} getHeightAt={world.getHeightAt} />
+                    <Player
+                        landings={world.landings}
+                        getLandQHNoObj={world.getLandQHNoObj}
+                        checkCollision={world.checkCollision}
+                    />
                     {enableHUD && <HUD miniMap={world.miniMap} />}
 
                 </React.Suspense>
