@@ -31,6 +31,8 @@ interface Props {
 }
 
 export default function Player({ getHeightAt, landings }: Props) {
+    const velocityRef = React.useRef(new Vector3());
+    const initialRef = React.useRef(true);
     React.useEffect(() => {
         document.addEventListener('keydown', handleKeys);
         document.addEventListener('keyup', handleKeys);
@@ -40,12 +42,16 @@ export default function Player({ getHeightAt, landings }: Props) {
         }
     })
 
-    const velocity = new Vector3();
     const direction = new Vector3();
     const _vector = new Vector3();
 
-    const initPos = landings[Math.floor(landings.length * Math.random())];
-    let initial = true;
+    const initPos = React.useMemo(
+        () => {
+            initialRef.current = true;
+            return landings[Math.floor(landings.length * Math.random())];
+        },
+        [landings]
+    );
 
     const velocityDrag = 10.0;
     const mass = 100.0;
@@ -57,9 +63,11 @@ export default function Player({ getHeightAt, landings }: Props) {
     useFrame(({ camera }) => {
         let delta = clock.getDelta();
 
-        if (initial) {
+        const velocity = velocityRef.current;
+
+        if (initialRef.current) {
             camera.position.copy(initPos);
-            initial = false;
+            initialRef.current = false;
         }
 
         velocity.x -= velocity.x * velocityDrag * delta;

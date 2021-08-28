@@ -13,10 +13,17 @@ interface Props {
     rscUrl: string;
     enableHUD?: boolean;
     enableScenery?: boolean;
+    enableSky?: boolean;
     clipFar?: number;
 }
 
-function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true, clipFar = 1000000 }: Props) {
+function World({
+    mapUrl, rscUrl,
+    enableHUD = true,
+    enableScenery = true,
+    enableSky = true,
+    clipFar = 1000000
+}: Props) {
     const [world, setWorld] = React.useState<any>();
 
     React.useEffect(() => {
@@ -41,7 +48,7 @@ function World({ mapUrl, rscUrl, enableHUD = true, enableScenery = true, clipFar
 
                 <React.Suspense fallback={<Html center>Loading, please wait</Html>}>
 
-                    <Sky clipFar={clipFar} rsc={world.rsc} map={world.map} />
+                    {enableSky && <Sky clipFar={clipFar} rsc={world.rsc} map={world.map} />}
                     <Terrain rsc={world.rsc} map={world.map} />
                     {enableScenery && <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />}
                     <Player landings={world.landings} getHeightAt={world.getHeightAt} />

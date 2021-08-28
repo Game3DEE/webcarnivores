@@ -1,5 +1,9 @@
 import React from 'react'
-import DatGui, { DatBoolean, DatSelect } from 'react-dat-gui';
+import DatGui, {
+    DatBoolean,
+//    DatNumber,
+    DatSelect
+} from 'react-dat-gui';
 import 'react-dat-gui/dist/index.css';
 
 import './Home.css'
@@ -23,6 +27,7 @@ export default function Home() {
     const [ world, setWorld ] = React.useState(levelSources[0]);
     const [ data, setData ] = React.useState({
         enableScenery: true,
+        enableSky: true,
         enableHUD: false,
         levelName: levelNames[0],
         renderDistance: 16384,
@@ -62,6 +67,7 @@ export default function Home() {
                 rscUrl={world.rsc}
                 enableHUD={data.enableHUD}
                 enableScenery={data.enableScenery}
+                enableSky={data.enableSky}
                 clipFar={data.renderDistance}
             />
 
@@ -77,6 +83,7 @@ export default function Home() {
             }}>
                 <DatBoolean path='enableScenery' label="Objects" />
                 <DatBoolean path='enableHUD' label="HUD" />
+                <DatBoolean path='enableSky' label="Sky" />
                 <DatSelect path='levelName' label="Area" options={levelNames} />
             </DatGui>
 
@@ -84,6 +91,7 @@ export default function Home() {
     )
 }
 
+
 /*
-                <DatNumber path='renderDistance' label="RenderDist" step={256} min={256} max={1000000} />
+                <DatNumber path='renderDistance' label="RenderDist" step={256} min={10*256} max={1000000} />
 */
