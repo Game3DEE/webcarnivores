@@ -37,6 +37,7 @@ export default class CPCTerrainMaterial extends MeshBasicMaterial {
                 uniform usampler2D vertexMap;
                 uniform mat4 heightmapMatrix;
                 varying vec4 vLighting;
+                #include <common>
             `)
             vs = vs.replace('#include <color_vertex>', `
             vUv = (heightmapMatrix * modelMatrix * vec4(position, 1.0)).xz;
@@ -63,37 +64,52 @@ export default class CPCTerrainMaterial extends MeshBasicMaterial {
             uniform sampler2DArray map;
             uniform usampler2D fragmentMap;
             varying vec4 vLighting;
+
+            vec2 rotateUV(vec2 uv, uint rot) {
+#if 0
+                switch(rot) {
+                    case 0u:
+                        //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
+                        break;
+                    case 1u:
+                        float t = uv.x;
+                        uv.x = uv.y;
+                        uv.y = 1.0 - t;
+                        //diffuseColor = vec4(0.5, 0.0, 0.0, 1.0);
+                        break;
+                    case 2u:
+                        uv.x = 1.0 - uv.x;
+                        uv.y = 1.0 - uv.y;
+                        //diffuseColor = vec4(0.5, 0.5, 0.0, 1.0);
+                        break;
+                    case 3u:
+                        float x = uv.x;
+                        uv.x = 1.0 - uv.y;
+                        uv.y = x;
+                        //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
+                    break;
+                }
+#else                
+                float mid = 0.5;
+                float rotation = float(rot);
+                float cos_ = cos(PI / 2. * rotation);
+                float sin_ = sin(PI / 2. * rotation);
+                return vec2(
+                    cos_ * (uv.x - mid) + sin_ * (uv.y - mid) + mid,
+                    cos_ * (uv.y - mid) - sin_ * (uv.x - mid) + mid
+                );
+#endif
+            }
             `);
             fs = fs.replace('#include <map_fragment>', `
             vec2 tilePos = vUv * MAP_SIZE;
             vec2 localTileUv = tilePos - floor(tilePos);
             uvec4 tex = texture(fragmentMap, vUv);
-            float triside = ((1.0-localTileUv.x) - localTileUv.y);
             diffuseColor = vLighting;
-            switch(tex.b & 3u) {
-                case 0u:
-                    //diffuseColor = vec4(1.0, 1.0, 1.0, 1.0);
-                    break;
-                case 1u:
-                    float t = localTileUv.x;
-                    localTileUv.x = localTileUv.y;
-                    localTileUv.y = 1.0 - t;
-                    //diffuseColor = vec4(0.5, 0.0, 0.0, 1.0);
-                    break;
-                case 2u:
-                    localTileUv.x = 1.0 - localTileUv.x;
-                    localTileUv.y = 1.0 - localTileUv.y;
-                    //diffuseColor = vec4(0.5, 0.5, 0.0, 1.0);
-                    break;
-                case 3u:
-                    float x = localTileUv.x;
-                    localTileUv.x = 1.0 - localTileUv.y;
-                    localTileUv.y = x;
-                    //diffuseColor = vec4(0.0, 0.0, 1.0, 1.0);
-                    break;
-            }
+            localTileUv = rotateUV(localTileUv, tex.b & 3u);
             uint depth = tex.r;
             #if CARNIVORES == 1
+            float triside = ((1.0-localTileUv.x) - localTileUv.y);
             if (triside >= 0.0) {
                 depth = (tex.b & 64u) != 0u ? tex.r : tex.g;
             } else {
