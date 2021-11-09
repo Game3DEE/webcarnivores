@@ -201,6 +201,9 @@ types:
       - id: f_limit
         type: f4
 
+# Audio format is:
+#   Mono, 16bit, 22050Hz
+
   random_sound:
     seq:
       - id: pcm_size
@@ -237,9 +240,9 @@ types:
         enum: audio_reverb
       - id: rf_not_at_night
         type: b1
+        doc: if set, sound does not play at night
       - id: rf_unused
         type: b15
-        doc: if set, sound does not play at night
 
   water:
     seq:

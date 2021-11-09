@@ -29,6 +29,7 @@ export default function Home() {
         enableScenery: true,
         enableSky: true,
         enableHUD: false,
+        enableAudio: false,
         levelName: levelNames[0],
         renderDistance: 16384,
     });
@@ -68,6 +69,7 @@ export default function Home() {
                 enableHUD={data.enableHUD}
                 enableScenery={data.enableScenery}
                 enableSky={data.enableSky}
+                enableAudio={data.enableAudio}
                 clipFar={data.renderDistance}
             />
 
@@ -84,6 +86,7 @@ export default function Home() {
                 <DatBoolean path='enableScenery' label="Objects" />
                 <DatBoolean path='enableHUD' label="HUD" />
                 <DatBoolean path='enableSky' label="Sky" />
+                <DatBoolean path='enableAudio' label="Audio" />
                 <DatSelect path='levelName' label="Area" options={levelNames} />
             </DatGui>
 

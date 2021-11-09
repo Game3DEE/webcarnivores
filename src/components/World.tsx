@@ -1,12 +1,14 @@
 import React from 'react';
 import { Html, PointerLockControls, Stats } from '@react-three/drei';
-import Terrain from './Terrain';
+import { Canvas } from '@react-three/fiber';
+
 import { loadArea } from '../legacy/hunt';
+import Terrain from './Terrain';
 import Player from '../Player';
 import Sky from './Sky';
 import Scenery from './Scenery';
-import { Canvas } from '@react-three/fiber';
 import HUD from './HUD';
+import EnvSound from './EnvSound';
 
 interface Props {
     mapUrl: string;
@@ -14,6 +16,7 @@ interface Props {
     enableHUD?: boolean;
     enableScenery?: boolean;
     enableSky?: boolean;
+    enableAudio?: boolean;
     clipFar?: number;
 }
 
@@ -22,6 +25,7 @@ function World({
     enableHUD = true,
     enableScenery = true,
     enableSky = true,
+    enableAudio = false,
     clipFar = 1000000
 }: Props) {
     const [world, setWorld] = React.useState<any>();
@@ -47,7 +51,7 @@ function World({
                 <PointerLockControls />
 
                 <React.Suspense fallback={<Html center>Loading, please wait</Html>}>
-
+                    {enableAudio && <EnvSound rsc={world.rsc} map={world.map} />}
                     {enableSky && <Sky clipFar={clipFar} rsc={world.rsc} map={world.map} />}
                     <Terrain rsc={world.rsc} map={world.map} />
                     {enableScenery && <Scenery rsc={world.rsc} map={world.map} getHeightAt={world.getObjectH} />}
