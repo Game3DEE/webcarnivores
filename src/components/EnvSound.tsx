@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import React from 'react'
-import { Audio, PositionalAudio, AudioListener, Scene } from 'three'
+import { Audio, PositionalAudio, AudioListener } from 'three'
 
 interface Props {
     rsc: any;
