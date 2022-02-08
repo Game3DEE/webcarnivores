@@ -38,22 +38,27 @@ export default function Home() {
         ev.preventDefault();
     } 
 
+    function processFiles(files: FileList) {
+        console.log(files)
+        let map = null;
+        let rsc = null;
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            if (f.name.toUpperCase().endsWith('.MAP')) {
+                map = URL.createObjectURL(f);
+            } else if (f.name.toUpperCase().endsWith('.RSC')) {
+                rsc = URL.createObjectURL(f);
+            }
+        }
+        if (map && rsc) {
+            setWorld({ map, rsc });
+        }
+    }
+
     function drop(ev: React.DragEvent) {
         ev.preventDefault();
         if (ev.dataTransfer.files?.length) {
-            let map = null;
-            let rsc = null;
-            for (let i = 0; i < ev.dataTransfer.files.length; i++) {
-                const f = ev.dataTransfer.files[i];
-                if (f.name.toUpperCase().endsWith('.MAP')) {
-                    map = URL.createObjectURL(f);
-                } else if (f.name.toUpperCase().endsWith('.RSC')) {
-                    rsc = URL.createObjectURL(f);
-                }
-            }
-            if (map && rsc) {
-                setWorld({ map, rsc });
-            }
+            processFiles(ev.dataTransfer.files)
         }
     }
 
@@ -89,6 +94,12 @@ export default function Home() {
                 <DatBoolean path='enableAudio' label="Audio" />
                 <DatSelect path='levelName' label="Area" options={levelNames} />
             </DatGui>
+            <input
+                type="file"
+                multiple
+                onChange={ev => ev.target.files && processFiles(ev.target.files) }
+                style={{ position: 'absolute', right: 0, bottom: 0 }}
+            ></input>
 
         </div>
     )
