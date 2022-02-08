@@ -81,6 +81,7 @@ export async function loadArea(mapUrl: string, rscUrl: string) {
     for (let y = 0; y < miniMapSize; y++) {
         for (let x = 0; x < miniMapSize; x++) {
             let tidx = map.textureMap1![(y * 2 * map.mapSize) + x * 2];
+            if (tidx > rsc.textures!.length) tidx = 1; // XXX invalid textures in texmap!
             // Use more detail for water tiles
             tx = tidx === 0 ? (x & 31) * 4 : (x & 15) * 8;
             ty = tidx === 0 ? (y & 31) * 4 : (y & 15) * 8;
